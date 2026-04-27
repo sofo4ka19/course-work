@@ -93,4 +93,123 @@ export const habitService = {
     // onDelete: Cascade у schema видалить всі completions автоматично
     await prisma.habit.delete({ where: { id: habitId } });
   },
+
+  async upsertCompletion(
+    habitId: number,
+    userId: number,
+    completionPct: number,
+  ) {
+    // Спочатку перевіряємо ownership
+    const habit = await prisma.habit.findUnique({ where: { id: habitId } });
+    if (!habit || habit.userId !== userId) {
+      throw new Error("NOT_FOUND");
+    }
+
+    if (completionPct < 0 || completionPct > 100) {
+      throw new Error("INVALID_PCT");
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // upsert = insert якщо не існує, update якщо існує
+    // Це безпечніше ніж перевіряти вручну — немає race condition
+    const completion = await prisma.completion.upsert({
+      where: {
+        habitId_completionDate: { habitId, completionDate: today },
+      },
+      update: { completionPct },
+      create: { habitId, completionDate: today, completionPct },
+    });
+
+    // Після кожної фіксації — перераховуємо серію
+    await this.recalculateStreak(habitId);
+
+    return completion;
+  },
+
+  async getCompletions(habitId: number, userId: number, from: Date, to: Date) {
+    const habit = await prisma.habit.findUnique({ where: { id: habitId } });
+    if (!habit || habit.userId !== userId) {
+      throw new Error("NOT_FOUND");
+    }
+
+    return prisma.completion.findMany({
+      where: {
+        habitId,
+        completionDate: { gte: from, lte: to },
+      },
+      orderBy: { completionDate: "asc" },
+    });
+  },
+
+  async recalculateStreak(habitId: number) {
+    const habit = await prisma.habit.findUnique({ where: { id: habitId } });
+    if (!habit) return;
+
+    // Беремо всі completions у зворотньому порядку (найновіші спочатку)
+    const completions = await prisma.completion.findMany({
+      where: { habitId },
+      orderBy: { completionDate: "desc" },
+    });
+
+    if (completions.length === 0) {
+      await prisma.habit.update({
+        where: { id: habitId },
+        data: { currentStreak: 0 },
+      });
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Серія активна тільки якщо є запис за сьогодні або вчора
+    // Якщо останній запис позавчора і раніше — серія вже перервана
+    const lastDate = new Date(completions[0]!.completionDate);
+    lastDate.setHours(0, 0, 0, 0);
+
+    const isActive =
+      lastDate.getTime() === today.getTime() ||
+      lastDate.getTime() === yesterday.getTime();
+
+    if (!isActive) {
+      await prisma.habit.update({
+        where: { id: habitId },
+        data: { currentStreak: 0 },
+      });
+      return;
+    }
+
+    // Рахуємо послідовні дні де pct >= streakThreshold
+    let streak = 0;
+    let expectedDate = new Date(lastDate);
+
+    for (const completion of completions) {
+      const completionDate = new Date(completion.completionDate);
+      completionDate.setHours(0, 0, 0, 0);
+
+      // Якщо пропустили день — серія переривається
+      if (completionDate.getTime() !== expectedDate.getTime()) break;
+
+      // Якщо цього дня виконання нижче порогу — теж переривається
+      if (completion.completionPct < habit.streakThreshold) break;
+
+      streak++;
+      // Наступна очікувана дата — день раніше
+      expectedDate.setDate(expectedDate.getDate() - 1);
+    }
+
+    await prisma.habit.update({
+      where: { id: habitId },
+      data: {
+        currentStreak: streak,
+        // maxStreak ніколи не зменшується — це рекорд
+        maxStreak: Math.max(habit.maxStreak, streak),
+      },
+    });
+  },
 };

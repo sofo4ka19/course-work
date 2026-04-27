@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { body } from "express-validator";
+import { body, query } from "express-validator";
 import { authMiddleware } from "@/middlewares/authMiddleware";
 import { habitsController } from "@/controllers/habitsController";
+import { completionsController } from "@/controllers/completionsController";
 
 const router = Router();
 
@@ -28,5 +29,23 @@ router.get("/", habitsController.getAll);
 router.post("/", habitValidation, habitsController.create);
 router.put("/:id", habitValidation, habitsController.update);
 router.delete("/:id", habitsController.remove);
+router.post(
+  "/:id/completions",
+  [
+    body("completionPct")
+      .isInt({ min: 0, max: 100 })
+      .withMessage("Must be 0–100"),
+  ],
+  completionsController.upsert,
+);
+
+router.get(
+  "/:id/completions",
+  [
+    query("from").optional().isISO8601().withMessage("Invalid date format"),
+    query("to").optional().isISO8601().withMessage("Invalid date format"),
+  ],
+  completionsController.getMany,
+);
 
 export default router;
