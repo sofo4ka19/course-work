@@ -21,10 +21,12 @@ export default function LoginPage() {
       login(res.data.data.token, res.data.data.user);
       navigate("/dashboard");
     } catch (err) {
-      // Показуємо серверну помилку у формі
-      setError("root", {
-        message: err.response?.data?.error || "Something went wrong",
-      });
+      const message =
+        err instanceof Error && "response" in err
+          ? ((err as { response?: { data?: { error?: string } } }).response
+              ?.data?.error ?? "Something went wrong")
+          : "Something went wrong";
+      setError("root", { message });
     }
   };
 

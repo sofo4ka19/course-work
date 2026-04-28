@@ -21,7 +21,11 @@ export default function RegisterPage() {
       login(res.data.data.token, res.data.data.user);
       navigate("/dashboard");
     } catch (err) {
-      const message = err.response?.data?.error || "Something went wrong";
+      const message =
+        err instanceof Error && "response" in err
+          ? ((err as { response?: { data?: { error?: string } } }).response
+              ?.data?.error ?? "Something went wrong")
+          : "Something went wrong";
       setError("root", { message });
     }
   };
