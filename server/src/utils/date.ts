@@ -11,6 +11,15 @@ export function strToUTC(s: string): Date {
   return new Date(`${s}T00:00:00.000Z`);
 }
 
+/** Рядок "YYYY-MM-DD" → Date опівночі в локальному часі (для операцій на клієнті) */
+export function strToLocal(s: string): Date {
+  const parts = s.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    throw new Error(`Invalid date format: ${s}`);
+  }
+  return new Date(parts[0]!, parts[1]! - 1, parts[2]!);
+}
+
 /** Кінець дня UTC для діапазонів lte */
 export function strToUTCEnd(s: string): Date {
   return new Date(`${s}T23:59:59.999Z`);
