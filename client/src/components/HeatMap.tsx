@@ -1,23 +1,25 @@
 import type { Completion } from "@/types";
+import { localDateStr } from "@/utils/date";
 
 interface Props {
   completions: Completion[];
   streakThreshold: number;
+  days?: number;
 }
 
-export default function HeatMap({ completions, streakThreshold }: Props) {
+export default function HeatMap({ completions, streakThreshold, days: dayCount = 90 }: Props) {
   // Будуємо карту дата → pct для швидкого пошуку
   const pctByDate: Record<string, number> = {};
   completions.forEach((c) => {
-    pctByDate[c.completionDate.split("T")[0]] = c.completionPct;
+    pctByDate[c.completionDate] = c.completionPct;
   });
 
-  // Генеруємо 90 днів назад
+  // Генеруємо dayCount днів назад
   const days: { date: string; pct: number | null }[] = [];
-  for (let i = 89; i >= 0; i--) {
+  for (let i = dayCount - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().split("T")[0];
+    const key = localDateStr(d);
     days.push({ date: key, pct: pctByDate[key] ?? null });
   }
 

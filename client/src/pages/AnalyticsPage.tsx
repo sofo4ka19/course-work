@@ -1,34 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Chart as ChartJS,
+  type ChartOptions,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Tooltip,
   Legend,
-  type ChartOptions,
+  Title,
 } from "chart.js";
-import { Line } from "react-chartjs-2";
+import { Line, Bar } from "react-chartjs-2";
 import { useHabits } from "@/hooks/useHabits";
 import { analyticsApi } from "@/api/analyticsApi";
 import { habitsApi } from "@/api/habitsApi";
 import type { ChartData, Completion } from "@/types";
+import { localDateStr } from "@/utils/date";
 import HeatMap from "@/components/HeatMap";
+import Spinner from "@/components/Spinner";
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Tooltip,
   Legend,
+  Title,
 );
 
-const PERIODS = [
-  { label: "7 days", value: 7 as const },
-  { label: "30 days", value: 30 as const },
-  { label: "90 days", value: 90 as const },
+const PERIODS: { label: string; value: 7 | 30 | 90 }[] = [
+  { label: "7d", value: 7 },
+  { label: "30d", value: 30 },
+  { label: "90d", value: 90 },
 ];
 
 const LINE_COLORS = [
@@ -40,52 +46,121 @@ const LINE_COLORS = [
   "#0891b2",
 ];
 
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 export default function AnalyticsPage() {
   const { habits } = useHabits();
-  const [period, setPeriod] = useState<7 | 30 | 90>(30);
+
+  // ── Chart state ─────────────────────────────────────────
+  const [chartPeriod, setChartPeriod] = useState<7 | 30 | 90>(30);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [completions, setCompletions] = useState<Completion[]>([]);
-  const [activeHabitId, setActiveHabitId] = useState<number | null>(null);
+  const [chartLoading, setChartLoading] = useState(false);
 
-  const defaultHabitId = habits[0]?.id ?? null;
-  const selectedIdsResolved = useMemo(
+  // ── Heatmap state ────────────────────────────────────────
+  const [heatHabitId, setHeatHabitId] = useState<number | null>(null);
+  const [heatPeriod, setHeatPeriod] = useState<7 | 30 | 90>(90);
+  const [completions, setCompletions] = useState<Completion[]>([]);
+  const [heatLoading, setHeatLoading] = useState(false);
+
+  // ── Overview state ───────────────────────────────────────
+  const [overviewPeriod, setOverviewPeriod] = useState<7 | 30 | 90>(30);
+  const [overviewData, setOverviewData] = useState<
+    {
+      date: string;
+      avgPct: number;
+      completedCount: number;
+      bestDay: string;
+    }[]
+  >([]);
+
+  // ── Derived: fall back to first habit until user picks one ──
+  const firstHabitId = habits[0]?.id ?? null;
+  const effectiveSelectedIds = useMemo(
     () =>
       selectedIds.length > 0
         ? selectedIds
-        : defaultHabitId
-          ? [defaultHabitId]
+        : firstHabitId !== null
+          ? [firstHabitId]
           : [],
-    [selectedIds, defaultHabitId],
+    [selectedIds, firstHabitId],
   );
-  const activeHabitIdResolved = useMemo(
-    () => activeHabitId ?? defaultHabitId,
-    [activeHabitId, defaultHabitId],
-  );
+  const effectiveHeatHabitId = heatHabitId ?? firstHabitId;
 
-  // Завантажуємо дані графіка
+  // ── Завантаження даних графіка ───────────────────────────
   useEffect(() => {
-    if (selectedIdsResolved.length === 0) return;
+    if (effectiveSelectedIds.length === 0) return;
+    let cancelled = false;
+    setChartLoading(true);
     analyticsApi
-      .getChart(selectedIdsResolved, period)
-      .then((r) => setChartData(r.data.data));
-  }, [selectedIdsResolved, period]);
+      .getChart(effectiveSelectedIds, chartPeriod)
+      .then((res) => { if (!cancelled) setChartData(res.data.data); })
+      .finally(() => { if (!cancelled) setChartLoading(false); });
+    return () => { cancelled = true; };
+  }, [effectiveSelectedIds, chartPeriod]);
 
-  // Завантажуємо completions для теплової карти
+  // ── Завантаження completions для heatmap ─────────────────
   useEffect(() => {
-    if (!activeHabitIdResolved) return;
+    if (!effectiveHeatHabitId) return;
+    let cancelled = false;
+    setHeatLoading(true);
+    const today = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - heatPeriod);
     habitsApi
-      .getCompletions(activeHabitIdResolved)
-      .then((r) => setCompletions(r.data.data));
-  }, [activeHabitIdResolved]);
+      .getCompletions(effectiveHeatHabitId, localDateStr(from), localDateStr(today))
+      .then((res) => { if (!cancelled) setCompletions(res.data.data); })
+      .finally(() => { if (!cancelled) setHeatLoading(false); });
+    return () => { cancelled = true; };
+  }, [effectiveHeatHabitId, heatPeriod]);
 
+  // ── Завантаження overview даних ──────────────────────────
+  useEffect(() => {
+    if (habits.length === 0) return;
+    let cancelled = false;
+    const allIds = habits.map((h) => h.id);
+    analyticsApi.getChart(allIds, overviewPeriod).then((res) => {
+      if (cancelled) return;
+      const series = res.data.data;
+      const allDates = [
+        ...new Set(series.flatMap((s) => s.points.map((p) => p.date))),
+      ].sort();
+      const processed = allDates.map((date) => {
+        const dayPcts: number[] = [];
+        series.forEach((s) => {
+          const point = s.points.find((p) => p.date === date);
+          if (point) dayPcts.push(point.avgPct);
+        });
+        const avgPct =
+          dayPcts.length > 0
+            ? Math.round(dayPcts.reduce((a, b) => a + b, 0) / dayPcts.length)
+            : 0;
+        const completedCount = dayPcts.filter((p) => p > 0).length;
+        return { date, avgPct, completedCount, bestDay: "" };
+      });
+      const dayBuckets: number[][] = Array.from({ length: 7 }, () => []);
+      processed.forEach(({ date, avgPct }) => {
+        const day = new Date(date + "T12:00:00").getDay();
+        if (avgPct > 0) dayBuckets[day].push(avgPct);
+      });
+      const dayAvgs = dayBuckets.map((b) =>
+        b.length > 0 ? b.reduce((a, c) => a + c, 0) / b.length : 0,
+      );
+      const bestDayIdx = dayAvgs.indexOf(Math.max(...dayAvgs));
+      setOverviewData(
+        processed.map((d) => ({ ...d, bestDay: DAY_NAMES[bestDayIdx] ?? "—" })),
+      );
+    });
+    return () => { cancelled = true; };
+  }, [habits, overviewPeriod]);
+
+  // ── Helpers ──────────────────────────────────────────────
   const toggleHabit = (id: number) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
-  // Збираємо всі унікальні дати з усіх серій
   const allDates = [
     ...new Set(chartData.flatMap((d) => d.points.map((p) => p.date))),
   ].sort();
@@ -96,7 +171,7 @@ export default function AnalyticsPage() {
       label: series.habitName,
       data: allDates.map((date) => {
         const point = series.points.find((p) => p.date === date);
-        return point ? point.avgPct : null;
+        return point !== undefined ? point.avgPct : null;
       }),
       borderColor: LINE_COLORS[i % LINE_COLORS.length],
       backgroundColor: LINE_COLORS[i % LINE_COLORS.length] + "20",
@@ -112,109 +187,337 @@ export default function AnalyticsPage() {
       y: {
         min: 0,
         max: 100,
-        ticks: { callback: (v: string | number) => `${v}%` },
+        ticks: { callback: (v) => `${v}%` },
+        grid: { color: "#f3f4f6" },
       },
-      x: { ticks: { maxTicksLimit: 8 } },
+      x: {
+        ticks: { maxTicksLimit: 10 },
+        grid: { display: false },
+      },
     },
-    plugins: { legend: { position: "bottom" as const } },
+    plugins: {
+      legend: { position: "bottom" },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => ` ${ctx.dataset.label ?? ""}: ${ctx.parsed.y}%`,
+        },
+      },
+    },
   };
 
-  const activeHabit = habits.find((h) => h.id === activeHabitId);
+  // Overview bar chart — середній % по всіх звичках за день
+  const overviewBarData = {
+    labels: overviewData.map((d) => {
+      const date = new Date(d.date);
+      return date.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+      });
+    }),
+    datasets: [
+      {
+        label: "Avg completion %",
+        data: overviewData.map((d) => d.avgPct),
+        backgroundColor: overviewData.map((d) =>
+          d.avgPct >= 75
+            ? "#16a34a"
+            : d.avgPct >= 40
+              ? "#ca8a04"
+              : d.avgPct > 0
+                ? "#dc2626"
+                : "#e5e7eb",
+        ),
+        borderRadius: 4,
+      },
+    ],
+  };
 
-  return (
-    <div>
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Analytics</h1>
+  const overviewBarOptions: ChartOptions<"bar"> = {
+    responsive: true,
+    scales: {
+      y: {
+        min: 0,
+        max: 100,
+        ticks: { callback: (v) => `${v}%` },
+        grid: { color: "#f3f4f6" },
+      },
+      x: {
+        ticks: { maxTicksLimit: 12 },
+        grid: { display: false },
+      },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) =>
+            ` ${ctx.parsed.y}% avg · ${overviewData[ctx.dataIndex]?.completedCount ?? 0} habits logged`,
+        },
+      },
+    },
+  };
 
-      {habits.length === 0 ? (
+  const heatHabit = habits.find((h) => h.id === effectiveHeatHabitId);
+  const bestDay = overviewData[0]?.bestDay ?? "—";
+  const overallAvg =
+    overviewData.length > 0
+      ? Math.round(
+          overviewData.reduce((s, d) => s + d.avgPct, 0) /
+            overviewData.filter((d) => d.avgPct > 0).length || 0,
+        )
+      : 0;
+
+  if (habits.length === 0) {
+    return (
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900 mb-6">Analytics</h1>
         <p className="text-gray-400 text-sm">
           No habits yet. Create one to see analytics.
         </p>
-      ) : (
-        <>
-          {/* ── Chart section ─────────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-              <h2 className="text-sm font-medium text-gray-700">
-                Progress over time
-              </h2>
+      </div>
+    );
+  }
 
-              {/* Period selector */}
-              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-                {PERIODS.map(({ label, value }) => (
-                  <button
-                    key={value}
-                    onClick={() => setPeriod(value)}
-                    className={`px-3 py-1.5 text-xs transition-colors ${
-                      period === value
-                        ? "bg-green-600 text-white"
-                        : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
+  return (
+    <div className="space-y-6">
+      <h1 className="text-xl font-semibold text-gray-900">Analytics</h1>
 
-            {/* Habit toggles */}
-            <div className="flex flex-wrap gap-2 mb-5">
-              {habits.map((habit, i) => (
-                <button
-                  key={habit.id}
-                  onClick={() => toggleHabit(habit.id)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    selectedIds.includes(habit.id)
-                      ? "border-transparent text-white"
-                      : "border-gray-200 text-gray-500 bg-white"
+      {/* ═══════════════════════════════════════════════════════
+          OVERVIEW — загальний графік по всіх звичках
+      ═══════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+          <div>
+            <h2 className="text-sm font-medium text-gray-800">
+              Overall overview
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Average completion across all habits per day
+            </p>
+          </div>
+          <PeriodTabs value={overviewPeriod} onChange={setOverviewPeriod} />
+        </div>
+
+        {/* Summary chips */}
+        <div className="flex gap-3 mb-5 flex-wrap">
+          <Chip label="Period avg" value={`${overallAvg}%`} />
+          <Chip label="Most productive day" value={bestDay} />
+          <Chip
+            label="Best streak day"
+            value={
+              overviewData.length > 0
+                ? DAY_NAMES[
+                    overviewData
+                      .map((d) => new Date(d.date + "T12:00:00").getDay())
+                      .reduce((best, day, _, arr) => {
+                        const dayCount = arr.filter((d) => d === day).length;
+                        const bestCount = arr.filter((d) => d === best).length;
+                        return dayCount > bestCount ? day : best;
+                      }, 0)
+                  ]
+                : "—"
+            }
+          />
+        </div>
+
+        {overviewData.length > 0 ? (
+          <Bar data={overviewBarData} options={overviewBarOptions} />
+        ) : (
+          <div className="text-center py-8 text-gray-400 text-sm">Loading…</div>
+        )}
+
+        {/* Day of week breakdown */}
+        {overviewData.length > 0 && <DayOfWeekBreakdown data={overviewData} />}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          PER-HABIT LINE CHART
+      ═══════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-sm font-medium text-gray-800">
+              Per-habit progress
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Select habits to compare
+            </p>
+          </div>
+          <PeriodTabs value={chartPeriod} onChange={setChartPeriod} />
+        </div>
+
+        {/* Habit toggles */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          {habits.map((habit, i) => (
+            <button
+              key={habit.id}
+              onClick={() => toggleHabit(habit.id)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                effectiveSelectedIds.includes(habit.id)
+                  ? "border-transparent text-white"
+                  : "border-gray-200 text-gray-500 bg-white hover:bg-gray-50"
+              }`}
+              style={
+                effectiveSelectedIds.includes(habit.id)
+                  ? { backgroundColor: LINE_COLORS[i % LINE_COLORS.length] }
+                  : {}
+              }
+            >
+              {habit.name}
+            </button>
+          ))}
+        </div>
+
+        {chartLoading ? (
+          <Spinner />
+        ) : effectiveSelectedIds.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            Select at least one habit above
+          </p>
+        ) : allDates.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            No data for the selected period
+          </p>
+        ) : (
+          <Line data={lineChartData} options={chartOptions} />
+        )}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════
+          HEATMAP
+      ═══════════════════════════════════════════════════════ */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-sm font-medium text-gray-800">
+              Completion heatmap
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Daily completion for one habit
+            </p>
+          </div>
+          <PeriodTabs value={heatPeriod} onChange={setHeatPeriod} />
+        </div>
+
+        {/* Habit selector */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          {habits.map((h) => (
+            <button
+              key={h.id}
+              onClick={() => setHeatHabitId(h.id)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                effectiveHeatHabitId === h.id
+                  ? "bg-green-600 border-transparent text-white"
+                  : "border-gray-200 text-gray-500 bg-white hover:bg-gray-50"
+              }`}
+            >
+              {h.name}
+            </button>
+          ))}
+        </div>
+
+        {heatLoading ? (
+          <Spinner />
+        ) : heatHabit ? (
+          <HeatMap
+            completions={completions}
+            streakThreshold={heatHabit.streakThreshold}
+            days={heatPeriod}
+          />
+        ) : (
+          <p className="text-sm text-gray-400 text-center py-8">
+            Select a habit above
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Допоміжні компоненти ────────────────────────────────────
+
+function PeriodTabs({
+  value,
+  onChange,
+}: {
+  value: 7 | 30 | 90;
+  onChange: (v: 7 | 30 | 90) => void;
+}) {
+  return (
+    <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+      {PERIODS.map(({ label, value: v }) => (
+        <button
+          key={v}
+          onClick={() => onChange(v)}
+          className={`px-3 py-1.5 text-xs transition-colors ${
+            value === v
+              ? "bg-green-600 text-white"
+              : "text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Chip({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="bg-gray-50 rounded-lg px-3 py-1.5">
+      <p className="text-xs text-gray-400">{label}</p>
+      <p className="text-sm font-semibold text-gray-800">{value}</p>
+    </div>
+  );
+}
+
+function DayOfWeekBreakdown({
+  data,
+}: {
+  data: { date: string; avgPct: number }[];
+}) {
+  // Рахуємо середнє по кожному дню тижня
+  const buckets: number[][] = Array.from({ length: 7 }, () => []);
+  data.forEach(({ date, avgPct }) => {
+    if (avgPct > 0) buckets[new Date(date).getDay()].push(avgPct);
+  });
+
+  const dayAvgs = buckets.map((b) =>
+    b.length > 0 ? Math.round(b.reduce((a, c) => a + c, 0) / b.length) : 0,
+  );
+
+  const max = Math.max(...dayAvgs, 1);
+
+  return (
+    <div className="mt-5 pt-5 border-t border-gray-50">
+      <p className="text-xs text-gray-400 mb-3">Average by day of week</p>
+      <div className="flex gap-2 items-end h-16">
+        {DAY_NAMES.map((name, i) => {
+          const pct = dayAvgs[i];
+          const height = Math.round((pct / max) * 100);
+          const isMax = pct === max && pct > 0;
+          return (
+            <div key={name} className="flex-1 flex flex-col items-center gap-1">
+              <span className="text-xs text-gray-400">
+                {pct > 0 ? pct + "%" : ""}
+              </span>
+              <div className="w-full flex items-end" style={{ height: 36 }}>
+                <div
+                  className={`w-full rounded-t transition-all ${
+                    isMax ? "bg-green-500" : "bg-gray-200"
                   }`}
-                  style={
-                    selectedIds.includes(habit.id)
-                      ? { backgroundColor: LINE_COLORS[i % LINE_COLORS.length] }
-                      : {}
-                  }
-                >
-                  {habit.name}
-                </button>
-              ))}
-            </div>
-
-            {allDates.length > 0 ? (
-              <Line data={lineChartData} options={chartOptions} />
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-8">
-                No data for selected period
-              </p>
-            )}
-          </div>
-
-          {/* ── Heat map section ───────────────────────────── */}
-          <div className="bg-white rounded-xl border border-gray-100 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium text-gray-700">
-                90-day heatmap
-              </h2>
-              <select
-                className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-600"
-                value={activeHabitId ?? ""}
-                onChange={(e) => setActiveHabitId(Number(e.target.value))}
+                  style={{ height: pct > 0 ? `${height}%` : "2px" }}
+                />
+              </div>
+              <span
+                className={`text-xs font-medium ${isMax ? "text-green-600" : "text-gray-400"}`}
               >
-                {habits.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name}
-                  </option>
-                ))}
-              </select>
+                {name}
+              </span>
             </div>
-
-            {activeHabit && (
-              <HeatMap
-                completions={completions}
-                streakThreshold={activeHabit.streakThreshold}
-              />
-            )}
-          </div>
-        </>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
