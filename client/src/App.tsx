@@ -1,13 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthProvider.tsx";
-import PrivateRoute from "./router/PrivateRoute";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
+import { AuthProvider } from "@/context/AuthProvider";
+import PrivateRoute from "@/router/PrivateRoute";
+import AppLayout from "@/components/AppLayout";
+import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
+import { HabitProvider } from "./context/HabitProvider";
+import HabitsPage from "@/pages/HabitsPage";
 
-// Тимчасові заглушки — замінимо у наступних фазах
-const Dashboard = () => (
-  <div className="p-8 text-gray-700 font-medium">Dashboard — coming soon</div>
-);
+function PrivateLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <PrivateRoute>
+      <HabitProvider>
+        <AppLayout>{children}</AppLayout>
+      </HabitProvider>
+    </PrivateRoute>
+  );
+}
 
 export default function App() {
   return (
@@ -16,15 +24,17 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+
           <Route
-            path="/dashboard"
+            path="/habits"
             element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
+              <PrivateLayout>
+                <HabitsPage />
+              </PrivateLayout>
             }
           />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
