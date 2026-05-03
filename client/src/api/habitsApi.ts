@@ -12,9 +12,10 @@ export const habitsApi = {
 
   delete: (id: number) => apiClient.delete(`/habits/${id}`),
 
-  upsertCompletion: (habitId: number, completionPct: number) =>
+  upsertCompletion: (habitId: number, completionPct: number, date?: string) =>
     apiClient.post<{ data: Completion }>(`/habits/${habitId}/completions`, {
       completionPct,
+      ...(date && { date }),
     }),
 
   getCompletions: (habitId: number, from?: string, to?: string) =>

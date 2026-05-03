@@ -19,6 +19,7 @@ export interface Habit {
   // ці поля не в БД — розраховуються сервером при відповіді
   todayPct: number | null; // completion_pct за сьогодні (null = не зафіксовано)
   weekAvgPct: number | null; // середній pct за останні 7 днів
+  customFrequency?: string | null;
 }
 
 export interface Completion {
@@ -99,5 +100,19 @@ export interface HabitFormData {
   name: string;
   description: string;
   frequency: "daily" | "weekly" | "custom";
+  customFrequency?: string;
   streakThreshold: number;
+}
+
+export interface OverviewPoint {
+  date: string;
+  avgPct: number;
+  completedCount: number;
+}
+
+export interface OverviewData {
+  points: OverviewPoint[];
+  dayAvgs: number[];
+  bestDay: string;
+  bestDayIdx: number;
 }
