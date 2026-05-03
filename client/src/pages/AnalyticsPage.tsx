@@ -125,10 +125,22 @@ export default function AnalyticsPage() {
     analyticsApi.getChart(allIds, overviewPeriod).then((res) => {
       if (cancelled) return;
       const series = res.data.data;
-      const allDates = [
-        ...new Set(series.flatMap((s) => s.points.map((p) => p.date))),
-      ].sort();
-      const processed = allDates.map((date) => {
+
+      // Build full date range for the selected period (no gaps)
+      const rangeEnd = new Date();
+      const fullRange: string[] = [];
+      for (let i = overviewPeriod - 1; i >= 0; i--) {
+        const d = new Date(rangeEnd);
+        d.setDate(d.getDate() - i);
+        fullRange.push(localDateStr(d));
+      }
+
+      // Pre-compute per-date aggregates from API data
+      const apiDates = new Set(
+        series.flatMap((s) => s.points.map((p) => p.date)),
+      );
+      const dateMap = new Map<string, { avgPct: number; completedCount: number }>();
+      apiDates.forEach((date) => {
         const dayPcts: number[] = [];
         series.forEach((s) => {
           const point = s.points.find((p) => p.date === date);
@@ -138,8 +150,17 @@ export default function AnalyticsPage() {
           dayPcts.length > 0
             ? Math.round(dayPcts.reduce((a, b) => a + b, 0) / dayPcts.length)
             : 0;
-        const completedCount = dayPcts.filter((p) => p > 0).length;
-        return { date, avgPct, completedCount, bestDay: "" };
+        dateMap.set(date, { avgPct, completedCount: dayPcts.filter((p) => p > 0).length });
+      });
+
+      const processed = fullRange.map((date) => {
+        const entry = dateMap.get(date);
+        return {
+          date,
+          avgPct: entry?.avgPct ?? 0,
+          completedCount: entry?.completedCount ?? 0,
+          bestDay: "",
+        };
       });
       const dayBuckets: number[][] = Array.from({ length: 7 }, () => []);
       processed.forEach(({ date, avgPct }) => {
@@ -159,9 +180,11 @@ export default function AnalyticsPage() {
 
   // ── Helpers ──────────────────────────────────────────────
   const toggleHabit = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    if (effectiveSelectedIds.includes(id)) {
+      setSelectedIds(effectiveSelectedIds.filter((x) => x !== id));
+    } else {
+      setSelectedIds([...effectiveSelectedIds, id]);
+    }
   };
 
   const allDates = [
