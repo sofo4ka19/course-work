@@ -47,8 +47,6 @@ export function HabitProvider({ children }: { children: ReactNode }) {
 
   const logCompletion = async (habitId: number, pct: number, date?: string) => {
     await habitsApi.upsertCompletion(habitId, pct, date);
-    // Після фіксації — оновлюємо тільки цю звичку
-    // (серія перерахована на сервері, потрібні свіжі дані)
     const res = await habitsApi.getAll();
     setHabits(res.data.data);
   };
