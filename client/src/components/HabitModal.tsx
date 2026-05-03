@@ -2,34 +2,38 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import type { Habit, HabitFormData } from "@/types";
 
-interface Props {
-  habit?: Habit | null; // null = create mode, Habit = edit mode
+interface HabitModalProps {
+  habit?: Habit | null;
   onSubmit: (data: HabitFormData) => Promise<void>;
   onClose: () => void;
 }
 
-export default function HabitModal({ habit, onSubmit, onClose }: Props) {
+export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<HabitFormData>({
     defaultValues: {
       name: "",
       description: "",
       frequency: "daily",
+      customFrequency: "",
       streakThreshold: 50,
     },
   });
 
-  // Якщо відкриваємо в режимі редагування — заповнюємо форму
+  const freq = watch("frequency");
+
   useEffect(() => {
     if (habit) {
       reset({
         name: habit.name,
         description: habit.description ?? "",
         frequency: habit.frequency,
+        customFrequency: habit.customFrequency ?? "",
         streakThreshold: habit.streakThreshold,
       });
     } else {
@@ -37,89 +41,109 @@ export default function HabitModal({ habit, onSubmit, onClose }: Props) {
         name: "",
         description: "",
         frequency: "daily",
+        customFrequency: "",
         streakThreshold: 50,
       });
     }
   }, [habit, reset]);
 
-  const handleFormSubmit = async (data: HabitFormData) => {
-    await onSubmit(data);
-    onClose();
-  };
+  const inputCls =
+    "w-full px-3 py-2.5 rounded-xl border border-card-border bg-white text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent";
+  const labelCls =
+    "block text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5";
 
   return (
-    // Backdrop
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 px-4"
+      className="fixed inset-0 flex items-center justify-center z-50 px-4"
+      style={{ background: "rgba(15,15,26,0.65)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-5">
-          {habit ? "Edit habit" : "New habit"}
-        </h2>
+      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
+        <div className="bg-sidebar px-5 py-4">
+          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
+            {habit ? "Edit habit" : "New habit"}
+          </p>
+          <p className="text-sm font-extrabold text-white mt-0.5">
+            {habit ? habit.name : "Create a habit to track"}
+          </p>
+        </div>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          {/* Name */}
+        <form
+          onSubmit={handleSubmit(async (d) => {
+            await onSubmit(d);
+            onClose();
+          })}
+          className="p-5 space-y-4"
+        >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Name <span className="text-red-400">*</span>
-            </label>
+            <label className={labelCls}>Name *</label>
             <input
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className={inputCls}
               placeholder="e.g. Morning run"
               {...register("name", {
-                required: "Name is required",
-                maxLength: { value: 100, message: "Max 100 characters" },
+                required: "Required",
+                maxLength: { value: 100, message: "Max 100 chars" },
               })}
             />
             {errors.name && (
-              <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>
+              <p className="text-danger-500 text-xs mt-1">
+                {errors.name.message}
+              </p>
             )}
           </div>
 
-          {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Description
-            </label>
+            <label className={labelCls}>Description</label>
             <textarea
               rows={2}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+              className={`${inputCls} resize-none`}
               placeholder="Optional details…"
               {...register("description")}
             />
           </div>
 
-          {/* Frequency */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Frequency
-            </label>
-            <select
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
-              {...register("frequency")}
-            >
+            <label className={labelCls}>Frequency</label>
+            <select className={inputCls} {...register("frequency")}>
               <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="custom">Custom</option>
+              <option value="weekly">Weekly (once per week)</option>
+              <option value="custom">Custom schedule</option>
             </select>
           </div>
 
-          {/* Streak threshold */}
+          {freq === "custom" && (
+            <div>
+              <label className={labelCls}>Describe your schedule</label>
+              <input
+                className={inputCls}
+                placeholder="e.g. Every Monday and Thursday"
+                {...register("customFrequency", {
+                  validate: (v) =>
+                    freq !== "custom" || !!v || "Please describe your schedule",
+                })}
+              />
+              {errors.customFrequency && (
+                <p className="text-danger-500 text-xs mt-1">
+                  {errors.customFrequency.message}
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            <label className={labelCls}>
               Streak threshold
-              <span className="font-normal text-gray-400 ml-1">
-                (min % to count toward streak)
+              <span className="normal-case font-normal tracking-normal ml-1 text-gray-400">
+                — min % to count toward streak
               </span>
             </label>
             <input
               type="number"
               min={1}
               max={100}
-              className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className={inputCls}
               {...register("streakThreshold", {
                 required: true,
                 min: { value: 1, message: "Min 1" },
@@ -128,18 +152,17 @@ export default function HabitModal({ habit, onSubmit, onClose }: Props) {
               })}
             />
             {errors.streakThreshold && (
-              <p className="text-red-500 text-xs mt-1">
+              <p className="text-danger-500 text-xs mt-1">
                 {errors.streakThreshold.message}
               </p>
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex gap-2 pt-1">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
+              className="flex-1 bg-gradient-to-r from-accent-500 to-accent-400 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-sm"
             >
               {isSubmitting
                 ? "Saving…"
@@ -150,7 +173,7 @@ export default function HabitModal({ habit, onSubmit, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm transition-colors"
+              className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold"
             >
               Cancel
             </button>
