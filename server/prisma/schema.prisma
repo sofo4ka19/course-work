@@ -20,17 +20,16 @@ model User {
 }
 
 model Habit {
-  id              Int      @id @default(autoincrement())
-  userId          Int      @map("user_id")
-  name            String   @db.VarChar(100)
-  description     String?
-  // щоденно, щотижня тощо — зберігаємо як рядок для гнучкості
-  frequency       String   @default("daily")
-  // поріг completion_pct при якому день зараховується у серію (0–100)
-  streakThreshold Int      @default(50) @map("streak_threshold")
-  currentStreak   Int      @default(0) @map("current_streak")
-  maxStreak       Int      @default(0) @map("max_streak")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id               Int      @id @default(autoincrement())
+  userId           Int      @map("user_id")
+  name             String   @db.VarChar(100)
+  description      String?
+  frequency        String   @default("daily")
+  customFrequency  String?  @map("custom_frequency")
+  streakThreshold  Int      @default(50) @map("streak_threshold")
+  currentStreak    Int      @default(0)  @map("current_streak")
+  maxStreak        Int      @default(0)  @map("max_streak")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   completions Completion[]
