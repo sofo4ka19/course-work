@@ -23,6 +23,7 @@ interface HabitStats {
   habitName: string;
   avgPct: number;
   recentPcts: number[];
+  recentEntries: { date: string; pct: number }[]; // last 14 logged days
   currentStreak: number;
   maxStreak: number;
   streakThreshold: number;
@@ -69,11 +70,17 @@ async function analyzeHabits(userId: number): Promise<HabitStats[]> {
       half > 0 ? pcts.slice(-half).reduce((a, b) => a + b, 0) / half : 0;
     const trend = Math.round(last - first);
 
+    const recentEntries = habit.completions.slice(-14).map((c) => ({
+      date: localDateStr(c.completionDate),
+      pct: c.completionPct,
+    }));
+
     return {
       habitId: habit.id,
       habitName: habit.name,
       avgPct,
       recentPcts: pcts,
+      recentEntries,
       currentStreak: habit.currentStreak,
       maxStreak: habit.maxStreak,
       streakThreshold: habit.streakThreshold,
@@ -179,6 +186,21 @@ function applyRules(stats: HabitStats[]): RuleResult[] {
     });
   }
 
+  // Fallback: якщо жодне правило не спрацювало — загальний огляд
+  if (results.length === 0) {
+    const best = [...stats].sort((a, b) => b.avgPct - a.avgPct)[0];
+    results.push({
+      habitId: best?.habitId ?? null,
+      type: "general_progress",
+      data: {
+        count: stats.length,
+        avg: overallAvg,
+        best: best?.habitName ?? "",
+        bestAvg: best?.avgPct ?? 0,
+      },
+    });
+  }
+
   return results;
 }
 
@@ -199,6 +221,8 @@ function ruleToText(rule: RuleResult): string {
       return `"${d.name}" is on an upward trend (+${d.trend}% over the past 2 weeks). Great momentum — keep it going!`;
     case "too_many_habits":
       return `Your overall average across ${d.count} habits is ${d.avg}%. Research suggests focusing on 2–3 habits at a time is more effective. Consider pausing lower-priority habits temporarily.`;
+    case "general_progress":
+      return `You're tracking ${d.count} habit${Number(d.count) === 1 ? "" : "s"} with an overall average of ${d.avg}%. "${d.best}" is your strongest at ${d.bestAvg}%. Keep logging daily to build streaks and unlock more personalized advice.`;
     default:
       return "";
   }
@@ -207,8 +231,8 @@ function ruleToText(rule: RuleResult): string {
 // ── Gemini генерація ──────────────────────────────────────────────
 
 async function generateWithGemini(
-  rules: RuleResult[],
   stats: HabitStats[],
+  rules: RuleResult[],
 ): Promise<string[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("NO_GEMINI_KEY");
@@ -217,43 +241,58 @@ async function generateWithGemini(
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const statsContext = stats
-    .map(
-      (s) =>
-        `- "${s.habitName}": avg ${s.avgPct}%, streak ${s.currentStreak}d` +
-        ` (max ${s.maxStreak}d), threshold ${s.streakThreshold}%` +
-        `, trend ${s.trend > 0 ? "+" : ""}${s.trend}%` +
-        `, weakest day: ${s.dayOfWeekAvg.map((v, i) => `${DAY_NAMES[i]!.slice(0, 3)}=${v >= 0 ? v + "%" : "n/a"}`).join(" ")}`,
-    )
+    .map((s) => {
+      const byDay = DAY_NAMES.map((d, i) =>
+        s.dayOfWeekAvg[i]! >= 0 ? `${d.slice(0, 3)}: ${s.dayOfWeekAvg[i]}%` : null,
+      )
+        .filter(Boolean)
+        .join(", ");
+
+      const recent = s.recentEntries
+        .map((e) => `${e.date}: ${e.pct}%`)
+        .join(", ");
+
+      return (
+        `Habit: "${s.habitName}"\n` +
+        `  30-day avg: ${s.avgPct}%  |  threshold: ${s.streakThreshold}%\n` +
+        `  streak: ${s.currentStreak}d current, ${s.maxStreak}d best\n` +
+        `  trend (recent vs earlier): ${s.trend > 0 ? "+" : ""}${s.trend}%\n` +
+        (byDay ? `  by day of week: ${byDay}\n` : "") +
+        (recent ? `  last logged days: ${recent}\n` : "")
+      );
+    })
     .join("\n");
 
-  const rulesContext = rules
-    .map((r) => `[${r.type}] ${JSON.stringify(r.data)}`)
-    .join("\n");
+  const hintsContext =
+    rules.length > 0
+      ? `\nPATTERNS DETECTED (use as hints, not constraints):\n${rules.map((r) => `- [${r.type}] ${JSON.stringify(r.data)}`).join("\n")}`
+      : "";
 
-  const prompt = `You are a helpful habit coach. Based on the user's habit data and identified patterns, write ${rules.length} specific, actionable recommendations.
+  const targetCount = Math.min(Math.max(stats.length + 1, 3), 5);
 
-USER HABIT DATA (last 30 days):
-${statsContext}
+  const prompt = `You are an expert habit coach. A user shared their habit tracking data from the last 30 days. Analyze it and write ${targetCount} specific, personalized recommendations.
 
-IDENTIFIED PATTERNS:
-${rulesContext}
+HABIT DATA:
+${statsContext}${hintsContext}
 
-Write exactly ${rules.length} recommendations, one per line, numbered 1. 2. 3. etc.
-- Be specific and encouraging, mention habit names
-- Each recommendation should be 1-2 sentences max
-- Focus on actionable advice
-- Do not use markdown formatting`;
+Requirements:
+- Reference exact habit names, percentages, and day names from the data
+- Each tip must suggest ONE concrete action the user can take this week
+- Cover different habits and different angles (timing, streaks, weak days, motivation)
+- Be encouraging but honest about patterns you see
+- 1-2 sentences each, no markdown, no sub-bullets
+
+Output a numbered list only:
+1. ...
+2. ...`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
-  // Парсимо нумерований список
-  const lines = text
+  return text
     .split("\n")
     .map((l) => l.replace(/^\d+\.\s*/, "").trim())
-    .filter((l) => l.length > 10);
-
-  return lines;
+    .filter((l) => l.length > 15);
 }
 
 // ── Головна функція ───────────────────────────────────────────────
@@ -264,12 +303,11 @@ export const recommendationService = {
     if (stats.length === 0) return 0;
 
     const rules = applyRules(stats);
-    if (rules.length === 0) return 0;
 
     let texts: string[];
 
     try {
-      texts = await generateWithGemini(rules, stats);
+      texts = await generateWithGemini(stats, rules);
       // Якщо Gemini повернув менше рядків ніж правил — доповнюємо fallback
       while (texts.length < rules.length) {
         const rule = rules[texts.length];
@@ -288,20 +326,13 @@ export const recommendationService = {
       where: { userId, isRead: false },
     });
 
-    for (let i = 0; i < rules.length; i++) {
-      const rule = rules[i];
-      if (!rule) continue;
-      const text = texts[i] || ruleToText(rule);
+    for (const text of texts) {
       if (!text) continue;
       await prisma.recommendation.create({
-        data: {
-          userId,
-          habitId: rule.habitId,
-          content: text,
-        },
+        data: { userId, habitId: null, content: text },
       });
     }
 
-    return rules.length;
+    return texts.length;
   },
 };

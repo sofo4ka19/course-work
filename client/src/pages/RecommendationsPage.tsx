@@ -32,8 +32,13 @@ export default function RecommendationsPage() {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      await recommendationsApi.generate();
+      const res = await recommendationsApi.generate();
       await fetchRecs();
+      if (res.data.data.generated === 0) {
+        alert("No habits found. Add and log some habits first.");
+      }
+    } catch {
+      alert("Failed to generate advice. Please try again.");
     } finally {
       setIsGenerating(false);
     }
