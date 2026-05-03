@@ -24,7 +24,7 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
       : "border-card-border hover:border-accent-200";
 
   const fillColor =
-    pct >= 75 ? "bg-success-500" : pct >= 40 ? "bg-warn-500" : "bg-danger-500";
+    pct >= 75 ? "bg-accent-500" : pct >= 40 ? "bg-warn-500" : "bg-danger-500";
 
   const freqLabel =
     habit.frequency === "custom" && habit.customFrequency
@@ -39,7 +39,7 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
         {/* header */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-gray-900 truncate">
+            <h3 className="text-sm font-bold text-white truncate">
               {habit.name}
             </h3>
             <p className="text-[10px] text-gray-400 mt-0.5">{freqLabel}</p>
@@ -92,8 +92,8 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
               streakHot
                 ? "bg-warn-100 text-warn-700"
                 : streakWarm
-                  ? "bg-accent-100 text-accent-700"
-                  : "bg-gray-100 text-gray-400"
+                  ? "bg-accent-100 text-accent-400"
+                  : "bg-gray-800 text-gray-400"
             }`}
           >
             {streakHot ? "🔥 " : ""}
@@ -111,7 +111,7 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
                 : "bg-gradient-to-r from-accent-500 to-accent-400 text-white hover:from-accent-600 hover:to-accent-500"
             }`}
           >
-            {done ? "Update" : "Log today"}
+            {done ? "✓ Logged" : "Log today"}
           </button>
         </div>
       </div>
@@ -119,7 +119,7 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
       {/* delete confirm */}
       {confirmDelete && (
         <div className="px-4 pb-4 border-t border-card-border pt-3">
-          <p className="text-xs text-gray-600 mb-2">
+          <p className="text-xs text-gray-400 mb-2">
             Delete <strong>{habit.name}</strong>? All history will be lost.
           </p>
           <div className="flex gap-2">
@@ -134,7 +134,7 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
             </button>
             <button
               onClick={() => setConfirmDelete(false)}
-              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-bold rounded-lg"
+              className="px-3 py-1.5 bg-surface hover:bg-gray-800 text-gray-400 text-xs font-bold rounded-lg"
             >
               Cancel
             </button>

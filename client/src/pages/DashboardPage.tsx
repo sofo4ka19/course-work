@@ -53,7 +53,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-extrabold text-gray-900">Dashboard</h1>
+      <h1 className="text-xl font-extrabold text-white">Dashboard</h1>
       <p className="text-sm text-gray-400 mt-0.5 mb-6">{today}</p>
 
       {/* stat cards */}
@@ -98,7 +98,7 @@ export default function DashboardPage() {
                 className="flex items-center justify-between bg-card rounded-xl border border-card-border px-4 py-3 hover:border-accent-200 transition-colors"
               >
                 <div>
-                  <p className="text-sm font-bold text-gray-900">
+                  <p className="text-sm font-bold text-white">
                     {habit.name}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -125,25 +125,25 @@ export default function DashboardPage() {
           <SectionLabel
             text="Done today"
             badge={`${logged.length}`}
-            badgeCls="bg-success-100 text-success-700"
+            badgeCls="bg-success-100 text-success-500"
           />
           <div className="space-y-2">
             {logged.map((habit) => (
               <div
                 key={habit.id}
-                className="flex items-center justify-between bg-success-50 rounded-xl border border-success-200 px-4 py-3"
+                className="flex items-center justify-between bg-card rounded-xl border border-l-4 border-l-success-500 border-card-border px-4 py-3"
               >
                 <div>
-                  <p className="text-sm font-bold text-gray-900">
+                  <p className="text-sm font-bold text-white">
                     {habit.name}
                   </p>
-                  <p className="text-xs text-success-700 mt-0.5 font-medium">
+                  <p className="text-xs text-success-500 mt-0.5 font-medium">
                     ✓ Logged at {habit.todayPct}%
                   </p>
                 </div>
                 <button
                   onClick={() => setLogging(habit)}
-                  className="px-3 py-1.5 bg-white hover:bg-success-100 text-success-700 border border-success-200 text-xs font-bold rounded-lg shrink-0 ml-3"
+                  className="px-3 py-1.5 bg-card hover:bg-success-50 text-success-500 border border-card-border text-xs font-bold rounded-lg shrink-0 ml-3"
                 >
                   Update
                 </button>
@@ -155,10 +155,10 @@ export default function DashboardPage() {
 
       {habits.length > 0 && notLogged.length === 0 && (
         <div className="text-center py-12">
-          <div className="w-12 h-12 bg-success-100 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+          <div className="w-12 h-12 bg-success-50 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
             ✓
           </div>
-          <p className="font-bold text-gray-700">
+          <p className="font-bold text-white">
             All habits logged for today!
           </p>
           <p className="text-sm text-gray-400 mt-1">Come back tomorrow</p>

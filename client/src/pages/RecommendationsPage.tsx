@@ -46,7 +46,7 @@ export default function RecommendationsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-extrabold text-gray-900">Advice</h1>
+          <h1 className="text-xl font-extrabold text-white">Advice</h1>
           {unreadCount > 0 && (
             <p className="text-sm text-accent-600 mt-0.5 font-medium">
               {unreadCount} new
@@ -107,7 +107,7 @@ export default function RecommendationsPage() {
             >
               <div className="px-4 py-4">
                 <div className="flex items-start justify-between gap-4">
-                  <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                  <p className="text-sm text-gray-200 leading-relaxed flex-1">
                     {rec.content}
                   </p>
                   {!rec.isRead && (

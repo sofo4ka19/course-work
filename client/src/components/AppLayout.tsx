@@ -46,14 +46,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     className={`w-[26px] h-[26px] rounded-md flex items-center justify-center text-xs shrink-0 ${
                       isActive
                         ? "bg-gradient-to-br from-accent-500 to-accent-400 text-white"
-                        : "bg-white/[0.05] text-white/30"
+                        : "bg-white/[0.05] text-white/50"
                     }`}
                   >
                     {icon}
                   </span>
                   <span
                     className={`text-xs font-semibold ${
-                      isActive ? "text-white" : "text-white/[0.32]"
+                      isActive ? "text-white" : "text-white/60"
                     }`}
                   >
                     {label}

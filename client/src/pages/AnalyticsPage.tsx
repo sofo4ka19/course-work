@@ -31,6 +31,9 @@ ChartJS.register(
   Title,
 );
 
+ChartJS.defaults.color = "#9ca3af";
+ChartJS.defaults.borderColor = "rgba(255,255,255,0.06)";
+
 const PERIODS: { label: string; value: 7 | 30 | 90 }[] = [
   { label: "7d", value: 7 },
   { label: "30d", value: 30 },
@@ -38,12 +41,12 @@ const PERIODS: { label: string; value: 7 | 30 | 90 }[] = [
 ];
 
 const LINE_COLORS = [
-  "#16a34a",
-  "#2563eb",
-  "#d97706",
-  "#dc2626",
-  "#7c3aed",
-  "#0891b2",
+  "#8b5cf6",
+  "#ec4899",
+  "#f59e0b",
+  "#ef4444",
+  "#06b6d4",
+  "#10b981",
 ];
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -188,7 +191,7 @@ export default function AnalyticsPage() {
         min: 0,
         max: 100,
         ticks: { callback: (v) => `${v}%` },
-        grid: { color: "#f3f4f6" },
+        grid: { color: "rgba(255,255,255,0.06)" },
       },
       x: {
         ticks: { maxTicksLimit: 10 },
@@ -220,12 +223,12 @@ export default function AnalyticsPage() {
         data: overviewData.map((d) => d.avgPct),
         backgroundColor: overviewData.map((d) =>
           d.avgPct >= 75
-            ? "#16a34a"
+            ? "#8b5cf6"
             : d.avgPct >= 40
-              ? "#ca8a04"
+              ? "#f59e0b"
               : d.avgPct > 0
-                ? "#dc2626"
-                : "#e5e7eb",
+                ? "#ef4444"
+                : "rgba(255,255,255,0.07)",
         ),
         borderRadius: 4,
       },
@@ -239,7 +242,7 @@ export default function AnalyticsPage() {
         min: 0,
         max: 100,
         ticks: { callback: (v) => `${v}%` },
-        grid: { color: "#f3f4f6" },
+        grid: { color: "rgba(255,255,255,0.06)" },
       },
       x: {
         ticks: { maxTicksLimit: 12 },
@@ -270,7 +273,7 @@ export default function AnalyticsPage() {
   if (habits.length === 0) {
     return (
       <div>
-        <h1 className="text-xl font-semibold text-gray-900 mb-6">Analytics</h1>
+        <h1 className="text-xl font-semibold text-white mb-6">Analytics</h1>
         <p className="text-gray-400 text-sm">
           No habits yet. Create one to see analytics.
         </p>
@@ -280,15 +283,15 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold text-gray-900">Analytics</h1>
+      <h1 className="text-xl font-semibold text-white">Analytics</h1>
 
       {/* ═══════════════════════════════════════════════════════
           OVERVIEW — загальний графік по всіх звичках
       ═══════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
+      <div className="bg-card rounded-xl border border-card-border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
-            <h2 className="text-sm font-medium text-gray-800">
+            <h2 className="text-sm font-medium text-white">
               Overall overview
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -333,10 +336,10 @@ export default function AnalyticsPage() {
       {/* ═══════════════════════════════════════════════════════
           PER-HABIT LINE CHART
       ═══════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
+      <div className="bg-card rounded-xl border border-card-border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-sm font-medium text-gray-800">
+            <h2 className="text-sm font-medium text-white">
               Per-habit progress
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -355,7 +358,7 @@ export default function AnalyticsPage() {
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                 effectiveSelectedIds.includes(habit.id)
                   ? "border-transparent text-white"
-                  : "border-gray-200 text-gray-500 bg-white hover:bg-gray-50"
+                  : "border-card-border text-gray-400 bg-card hover:bg-surface"
               }`}
               style={
                 effectiveSelectedIds.includes(habit.id)
@@ -386,10 +389,10 @@ export default function AnalyticsPage() {
       {/* ═══════════════════════════════════════════════════════
           HEATMAP
       ═══════════════════════════════════════════════════════ */}
-      <div className="bg-white rounded-xl border border-gray-100 p-5">
+      <div className="bg-card rounded-xl border border-card-border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-sm font-medium text-gray-800">
+            <h2 className="text-sm font-medium text-white">
               Completion heatmap
             </h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -407,8 +410,8 @@ export default function AnalyticsPage() {
               onClick={() => setHeatHabitId(h.id)}
               className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                 effectiveHeatHabitId === h.id
-                  ? "bg-green-600 border-transparent text-white"
-                  : "border-gray-200 text-gray-500 bg-white hover:bg-gray-50"
+                  ? "bg-accent-500 border-transparent text-white"
+                  : "border-card-border text-gray-400 bg-card hover:bg-surface"
               }`}
             >
               {h.name}
@@ -444,15 +447,15 @@ function PeriodTabs({
   onChange: (v: 7 | 30 | 90) => void;
 }) {
   return (
-    <div className="flex rounded-lg border border-gray-200 overflow-hidden shrink-0">
+    <div className="flex rounded-lg border border-card-border overflow-hidden shrink-0">
       {PERIODS.map(({ label, value: v }) => (
         <button
           key={v}
           onClick={() => onChange(v)}
           className={`px-3 py-1.5 text-xs transition-colors ${
             value === v
-              ? "bg-green-600 text-white"
-              : "text-gray-600 hover:bg-gray-50"
+              ? "bg-accent-500 text-white"
+              : "text-gray-400 hover:bg-surface"
           }`}
         >
           {label}
@@ -464,9 +467,9 @@ function PeriodTabs({
 
 function Chip({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-gray-50 rounded-lg px-3 py-1.5">
+    <div className="bg-surface rounded-lg px-3 py-1.5">
       <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-sm font-semibold text-gray-800">{value}</p>
+      <p className="text-sm font-semibold text-white">{value}</p>
     </div>
   );
 }
@@ -489,7 +492,7 @@ function DayOfWeekBreakdown({
   const max = Math.max(...dayAvgs, 1);
 
   return (
-    <div className="mt-5 pt-5 border-t border-gray-50">
+    <div className="mt-5 pt-5 border-t border-card-border">
       <p className="text-xs text-gray-400 mb-3">Average by day of week</p>
       <div className="flex gap-2 items-end h-16">
         {DAY_NAMES.map((name, i) => {
@@ -504,13 +507,13 @@ function DayOfWeekBreakdown({
               <div className="w-full flex items-end" style={{ height: 36 }}>
                 <div
                   className={`w-full rounded-t transition-all ${
-                    isMax ? "bg-green-500" : "bg-gray-200"
+                    isMax ? "bg-accent-500" : "bg-gray-700"
                   }`}
                   style={{ height: pct > 0 ? `${height}%` : "2px" }}
                 />
               </div>
               <span
-                className={`text-xs font-medium ${isMax ? "text-green-600" : "text-gray-400"}`}
+                className={`text-xs font-medium ${isMax ? "text-accent-400" : "text-gray-500"}`}
               >
                 {name}
               </span>

@@ -42,7 +42,7 @@ export default function HabitsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-extrabold text-gray-900">My habits</h1>
+          <h1 className="text-xl font-extrabold text-white">My habits</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             {habits.length} habits tracked
           </p>
@@ -63,7 +63,7 @@ export default function HabitsPage() {
           <div className="w-14 h-14 bg-accent-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
             ✓
           </div>
-          <p className="font-bold text-gray-600">No habits yet</p>
+          <p className="font-bold text-gray-400">No habits yet</p>
           <p className="text-sm text-gray-400 mt-1">
             Create your first habit to get started
           </p>

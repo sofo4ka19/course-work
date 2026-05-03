@@ -48,7 +48,7 @@ export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
   }, [habit, reset]);
 
   const inputCls =
-    "w-full px-3 py-2.5 rounded-xl border border-card-border bg-white text-sm text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent";
+    "w-full px-3 py-2.5 rounded-xl border border-card-border bg-surface text-sm text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent";
   const labelCls =
     "block text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5";
 
@@ -60,7 +60,7 @@ export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
+      <div className="bg-card rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
         <div className="bg-sidebar px-5 py-4">
           <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
             {habit ? "Edit habit" : "New habit"}
@@ -173,7 +173,7 @@ export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold"
+              className="px-4 py-2.5 bg-surface hover:bg-gray-800 text-gray-400 rounded-xl text-sm font-bold"
             >
               Cancel
             </button>

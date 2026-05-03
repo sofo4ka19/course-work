@@ -59,7 +59,7 @@ export function CompletionSlider({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl">
+      <div className="bg-card rounded-2xl w-full max-w-sm overflow-hidden shadow-xl">
         {/* header */}
         <div className="bg-sidebar px-5 py-4">
           <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
@@ -106,8 +106,8 @@ export function CompletionSlider({
           <div
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold ${
               aboveThreshold
-                ? "bg-success-50 text-success-700 border border-success-200"
-                : "bg-gray-50 text-gray-400 border border-gray-100"
+                ? "bg-success-50 text-success-500 border border-success-200"
+                : "bg-surface text-gray-400 border border-card-border"
             }`}
           >
             {aboveThreshold
@@ -124,7 +124,7 @@ export function CompletionSlider({
                 className={`py-1.5 rounded-lg text-xs font-bold transition-colors ${
                   pct === v
                     ? "bg-accent-500 text-white"
-                    : "bg-accent-50 text-accent-600 hover:bg-accent-100"
+                    : "bg-accent-50 text-accent-400 hover:bg-accent-100"
                 }`}
               >
                 {v}%
@@ -169,8 +169,8 @@ export function CompletionSlider({
                           isSelected
                             ? "bg-gradient-to-br from-accent-500 to-accent-400 text-white"
                             : isTodayDay
-                              ? "bg-accent-100 text-accent-700"
-                              : "bg-gray-50 text-gray-600 hover:bg-accent-50"
+                              ? "bg-accent-100 text-accent-300"
+                              : "bg-surface text-gray-400 hover:bg-accent-50"
                         }`}
                       >
                         {new Date(day + "T12:00:00").getDate()}
@@ -203,7 +203,7 @@ export function CompletionSlider({
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm font-bold"
+              className="px-4 py-2.5 bg-surface hover:bg-gray-800 text-gray-400 rounded-xl text-sm font-bold"
             >
               Cancel
             </button>

@@ -24,7 +24,7 @@ export default function StatCard({
       <p className="text-xs text-gray-400 mb-1">{label}</p>
       <p
         className={`text-lg font-extrabold truncate leading-tight ${
-          accent ? "text-accent-600" : "text-gray-900"
+          accent ? "text-accent-400" : "text-white"
         }`}
       >
         {value}
