@@ -8,6 +8,7 @@ import { HabitProvider } from "./context/HabitProvider";
 import HabitsPage from "@/pages/HabitsPage";
 import DashboardPage from "@/pages/DashboardPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
+import RecommendationsPage from "@/pages/RecommendationsPage";
 
 function PrivateLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -48,6 +49,14 @@ export default function App() {
             element={
               <PrivateLayout>
                 <AnalyticsPage />
+              </PrivateLayout>
+            }
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <PrivateLayout>
+                <RecommendationsPage />
               </PrivateLayout>
             }
           />
