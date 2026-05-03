@@ -32,9 +32,8 @@ router.delete("/:id", habitsController.remove);
 router.post(
   "/:id/completions",
   [
-    body("completionPct")
-      .isInt({ min: 0, max: 100 })
-      .withMessage("Must be 0–100"),
+    body("completionPct").isInt({ min: 0, max: 100 }),
+    body("date").optional().isDate().withMessage("Format: YYYY-MM-DD"),
   ],
   completionsController.upsert,
 );

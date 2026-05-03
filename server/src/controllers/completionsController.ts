@@ -2,6 +2,7 @@ import { Response } from "express";
 import { body, query, validationResult } from "express-validator";
 import { AuthRequest } from "@/types";
 import { habitService } from "@/services/habitService";
+import { strToUTC, localDateStr, daysAgoStr, strToUTCEnd } from "@/utils/date";
 
 export const completionsController = {
   async upsert(req: AuthRequest, res: Response) {
@@ -14,10 +15,19 @@ export const completionsController = {
     }
 
     try {
+      const { completionPct, date } = req.body; // date = "YYYY-MM-DD" або undefined
+
+      // Забороняємо вводити майбутні дати
+      if (date && date > localDateStr()) {
+        res.status(400).json({ error: "Cannot log future dates" });
+        return;
+      }
+
       const completion = await habitService.upsertCompletion(
         Number(req.params.id),
         req.user!.userId,
-        req.body.completionPct,
+        completionPct,
+        date,
       );
       res.status(201).json({ data: completion });
     } catch (err: unknown) {
@@ -36,24 +46,12 @@ export const completionsController = {
   },
 
   async getMany(req: AuthRequest, res: Response) {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      res
-        .status(400)
-        .json({ error: "Validation failed", details: errors.array() });
-      return;
-    }
-
     try {
-      const from = req.query.from
-        ? new Date(req.query.from as string)
-        : (() => {
-            const d = new Date();
-            d.setDate(d.getDate() - 90);
-            return d;
-          })();
+      const fromStr = req.query.from as string | undefined;
+      const toStr = req.query.to as string | undefined;
 
-      const to = req.query.to ? new Date(req.query.to as string) : new Date();
+      const from = fromStr ? strToUTC(fromStr) : strToUTC(daysAgoStr(90));
+      const to = toStr ? strToUTCEnd(toStr) : strToUTCEnd(localDateStr());
 
       const completions = await habitService.getCompletions(
         Number(req.params.id),
