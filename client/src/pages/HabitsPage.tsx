@@ -40,7 +40,7 @@ export default function HabitsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-extrabold text-white">My habits</h1>
           <p className="text-sm text-gray-400 mt-0.5">

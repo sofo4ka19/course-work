@@ -49,7 +49,7 @@ export default function RecommendationsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-extrabold text-white">Advice</h1>
           {unreadCount > 0 && (

@@ -15,8 +15,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-surface">
-      {/* ── Sidebar ─────────────────────────────────── */}
-      <aside className="w-48 shrink-0 bg-sidebar flex flex-col">
+      {/* ── Sidebar (md+) ───────────────────────────── */}
+      <aside className="hidden md:flex w-48 shrink-0 bg-sidebar flex-col">
         <div className="px-4 py-5 border-b border-white/[0.06]">
           <p className="text-sm font-extrabold text-white tracking-tight">
             Habitflow
@@ -88,10 +88,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* ── Content ────────────────────────────────── */}
-      <main className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-6 py-8">{children}</div>
+      {/* ── Mobile top header ───────────────────────── */}
+      <header className="md:hidden fixed top-0 inset-x-0 z-30 h-14 bg-sidebar flex items-center justify-between px-4 border-b border-white/[0.06]">
+        <p className="text-sm font-extrabold text-white tracking-tight">
+          Habitflow
+        </p>
+        <button
+          onClick={() => {
+            logout();
+            navigate("/login");
+          }}
+          className="flex items-center gap-2"
+        >
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent-500 to-accent-400 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+            {initials}
+          </div>
+        </button>
+      </header>
+
+      {/* ── Content ─────────────────────────────────── */}
+      <main className="flex-1 overflow-auto pt-14 pb-16 md:pt-0 md:pb-0">
+        <div className="max-w-4xl mx-auto px-4 py-5 md:px-6 md:py-8">
+          {children}
+        </div>
       </main>
+
+      {/* ── Mobile bottom nav ───────────────────────── */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-sidebar border-t border-white/[0.06] flex">
+        {navItems.map(({ to, icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
+                isActive ? "text-accent-400" : "text-white/40"
+              }`
+            }
+          >
+            <span className="text-base leading-none">{icon}</span>
+            <span className="text-[9px] font-semibold">{label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

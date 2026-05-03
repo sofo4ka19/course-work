@@ -58,7 +58,7 @@ export default function DashboardPage() {
 
       {/* stat cards */}
       {stats && (
-        <div className="grid grid-cols-2 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
           <StatCard label="Weekly avg" value={`${stats.weekAvgPct}%`} accent />
           <StatCard
             label="Active streaks"
@@ -97,8 +97,8 @@ export default function DashboardPage() {
                 key={habit.id}
                 className="flex items-center justify-between bg-card rounded-xl border border-card-border px-4 py-3 hover:border-accent-200 transition-colors"
               >
-                <div>
-                  <p className="text-sm font-bold text-white">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-white truncate">
                     {habit.name}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -133,8 +133,8 @@ export default function DashboardPage() {
                 key={habit.id}
                 className="flex items-center justify-between bg-card rounded-xl border border-l-4 border-l-success-500 border-card-border px-4 py-3"
               >
-                <div>
-                  <p className="text-sm font-bold text-white">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-white truncate">
                     {habit.name}
                   </p>
                   <p className="text-xs text-success-500 mt-0.5 font-medium">

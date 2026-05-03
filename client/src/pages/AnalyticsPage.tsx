@@ -311,7 +311,7 @@ export default function AnalyticsPage() {
       {/* ═══════════════════════════════════════════════════════
           OVERVIEW — загальний графік по всіх звичках
       ═══════════════════════════════════════════════════════ */}
-      <div className="bg-card rounded-xl border border-card-border p-5">
+      <div className="bg-card rounded-xl border border-card-border p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
           <div>
             <h2 className="text-sm font-medium text-white">
@@ -359,7 +359,7 @@ export default function AnalyticsPage() {
       {/* ═══════════════════════════════════════════════════════
           PER-HABIT LINE CHART
       ═══════════════════════════════════════════════════════ */}
-      <div className="bg-card rounded-xl border border-card-border p-5">
+      <div className="bg-card rounded-xl border border-card-border p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-sm font-medium text-white">
@@ -412,7 +412,7 @@ export default function AnalyticsPage() {
       {/* ═══════════════════════════════════════════════════════
           HEATMAP
       ═══════════════════════════════════════════════════════ */}
-      <div className="bg-card rounded-xl border border-card-border p-5">
+      <div className="bg-card rounded-xl border border-card-border p-4 md:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-sm font-medium text-white">
