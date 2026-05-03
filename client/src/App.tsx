@@ -6,6 +6,7 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import { HabitProvider } from "./context/HabitProvider";
 import HabitsPage from "@/pages/HabitsPage";
+import DashboardPage from "@/pages/DashboardPage";
 
 function PrivateLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -33,7 +34,14 @@ export default function App() {
               </PrivateLayout>
             }
           />
-
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateLayout>
+                <DashboardPage />
+              </PrivateLayout>
+            }
+          />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>
