@@ -4,6 +4,9 @@ import cors from "cors";
 import morgan from "morgan";
 import authRouter from "@/routes/auth";
 import habitsRouter from "@/routes/habits";
+import analyticsRouter from '@/routes/analytics'
+import recommendationsRouter from '@/routes/recommendations'
+import { startRecommendationJob } from '@/jobs/recommendationJob'
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,6 +22,9 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/habits", habitsRouter);
+
+app.use('/api/analytics', analyticsRouter)
+app.use('/api/recommendations', recommendationsRouter)
 
 // ─── Global error handler ─────────────────────────────────
 app.use(
@@ -36,5 +42,6 @@ app.use(
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+startRecommendationJob()
 
 export default app;
