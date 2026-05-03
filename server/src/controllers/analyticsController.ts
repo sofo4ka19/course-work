@@ -41,4 +41,13 @@ export const analyticsController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
+  async getOverview(req: AuthRequest, res: Response) {
+    try {
+      const period = Number(req.query.period ?? 30) as 7 | 30 | 90 | 365;
+      const data = await analyticsService.getOverview(req.user!.userId, period);
+      res.json({ data });
+    } catch {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
 };

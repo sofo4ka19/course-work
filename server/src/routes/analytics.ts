@@ -18,5 +18,6 @@ router.get(
   ],
   analyticsController.getChart,
 );
+router.get("/overview", analyticsController.getOverview);
 
 export default router;
