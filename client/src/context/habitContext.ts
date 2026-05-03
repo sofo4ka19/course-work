@@ -8,7 +8,7 @@ interface HabitContextType {
   createHabit: (data: HabitFormData) => Promise<void>;
   updateHabit: (id: number, data: Partial<HabitFormData>) => Promise<void>;
   deleteHabit: (id: number) => Promise<void>;
-  logCompletion: (habitId: number, pct: number) => Promise<void>;
+  logCompletion: (habitId: number, pct: number, date?: string) => Promise<void>;
 }
 
 export const HabitContext = createContext<HabitContextType | null>(null);

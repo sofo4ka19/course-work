@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { recommendationsApi } from "@/api/recommendationsApi";
 import type { Recommendation } from "@/types";
+import Spinner from "@/components/Spinner";
 
 export default function RecommendationsPage() {
   const [recs, setRecs] = useState<Recommendation[]>([]);
@@ -8,14 +9,18 @@ export default function RecommendationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  useEffect(() => {
-    const fetchRecs = async () => {
+  const fetchRecs = useCallback(async () => {
+    try {
       const res = await recommendationsApi.getAll();
       setRecs(res.data.data);
+    } finally {
       setIsLoading(false);
-    };
-    fetchRecs();
+    }
   }, []);
+
+  useEffect(() => {
+    fetchRecs();
+  }, [fetchRecs]);
 
   const handleMarkRead = async (id: number) => {
     await recommendationsApi.markRead(id);
@@ -28,8 +33,7 @@ export default function RecommendationsPage() {
     setIsGenerating(true);
     try {
       await recommendationsApi.generate();
-      const res = await recommendationsApi.getAll();
-      setRecs(res.data.data);
+      await fetchRecs();
     } finally {
       setIsGenerating(false);
     }
@@ -42,33 +46,31 @@ export default function RecommendationsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            Recommendations
-          </h1>
+          <h1 className="text-xl font-extrabold text-gray-900">Advice</h1>
           {unreadCount > 0 && (
-            <p className="text-sm text-green-600 mt-0.5">{unreadCount} new</p>
+            <p className="text-sm text-accent-600 mt-0.5 font-medium">
+              {unreadCount} new
+            </p>
           )}
         </div>
-
         <button
           onClick={handleGenerate}
           disabled={isGenerating}
-          className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-gradient-to-r from-accent-500 to-accent-400 disabled:opacity-50 text-white text-sm font-bold rounded-xl"
         >
           {isGenerating ? "Generating…" : "↻ Generate now"}
         </button>
       </div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 mb-5 border-b border-gray-100">
+      <div className="flex gap-0 border-b border-card-border mb-5">
         {(["unread", "all"] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+            className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-colors ${
               filter === f
-                ? "border-green-600 text-green-700"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-accent-500 text-accent-700"
+                : "border-transparent text-gray-400 hover:text-gray-600"
             }`}
           >
             {f === "unread" ? `Unread (${unreadCount})` : "All"}
@@ -78,12 +80,12 @@ export default function RecommendationsPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <Spinner />
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
           <div className="text-3xl mb-3">✦</div>
-          <p className="font-medium text-gray-500">
+          <p className="font-bold text-gray-500">
             {filter === "unread"
               ? "No unread recommendations"
               : "No recommendations yet"}
@@ -97,32 +99,34 @@ export default function RecommendationsPage() {
           {filtered.map((rec) => (
             <div
               key={rec.id}
-              className={`bg-white rounded-xl border p-5 transition-colors ${
+              className={`bg-card rounded-xl overflow-hidden border-l-4 border-t border-r border-b transition-colors ${
                 rec.isRead
-                  ? "border-gray-100"
-                  : "border-green-200 bg-green-50/30"
+                  ? "border-l-accent-200 border-card-border"
+                  : "border-l-accent-500 border-card-border"
               }`}
             >
-              <div className="flex items-start justify-between gap-4">
-                <p className="text-sm text-gray-700 leading-relaxed flex-1">
-                  {rec.content}
+              <div className="px-4 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <p className="text-sm text-gray-700 leading-relaxed flex-1">
+                    {rec.content}
+                  </p>
+                  {!rec.isRead && (
+                    <button
+                      onClick={() => handleMarkRead(rec.id)}
+                      className="shrink-0 text-xs text-gray-400 hover:text-accent-600 underline font-medium"
+                    >
+                      Mark read
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-3">
+                  {new Date(rec.generatedAt).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </p>
-                {!rec.isRead && (
-                  <button
-                    onClick={() => handleMarkRead(rec.id)}
-                    className="shrink-0 text-xs text-gray-400 hover:text-gray-600 underline"
-                  >
-                    Mark read
-                  </button>
-                )}
               </div>
-              <p className="text-xs text-gray-400 mt-3">
-                {new Date(rec.generatedAt).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </p>
             </div>
           ))}
         </div>
