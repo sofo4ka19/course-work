@@ -1,5 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { HabitFormData } from "@/types";
+import {
+  localDateStr,
+  strToUTC,
+  strToUTCEnd,
+  daysAgoStr,
+  isoWeek,
+  prevIsoWeek,
+} from "@/utils/date";
 
 export const habitService = {
   async getAllByUser(userId: number) {
@@ -8,36 +16,30 @@ export const habitService = {
       orderBy: { createdAt: "asc" },
     });
 
-    // Для кожної звички рахуємо todayPct і weekAvgPct
-    // Це обчислюється на сервері щоб фронтенд отримав готові дані
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    const todayStart = strToUTC(localDateStr());
+    const todayEnd = strToUTCEnd(localDateStr());
+    const weekAgo = strToUTC(daysAgoStr(7));
 
     return Promise.all(
       habits.map(async (habit) => {
-        const todayCompletion = await prisma.completion.findUnique({
+        const todayCompletion = await prisma.completion.findFirst({
           where: {
-            habitId_completionDate: {
-              habitId: habit.id,
-              completionDate: today,
-            },
+            habitId: habit.id,
+            completionDate: { gte: todayStart, lte: todayEnd },
           },
         });
 
         const weekCompletions = await prisma.completion.findMany({
           where: {
             habitId: habit.id,
-            completionDate: { gte: weekAgo },
+            completionDate: { gte: weekAgo, lte: todayEnd },
           },
         });
 
         const weekAvgPct =
           weekCompletions.length > 0
             ? Math.round(
-                weekCompletions.reduce((sum, c) => sum + c.completionPct, 0) /
+                weekCompletions.reduce((s, c) => s + c.completionPct, 0) /
                   weekCompletions.length,
               )
             : null;
@@ -58,26 +60,31 @@ export const habitService = {
         name: data.name,
         description: data.description || null,
         frequency: data.frequency,
+        customFrequency:
+          data.frequency === "custom" ? (data.customFrequency ?? null) : null,
         streakThreshold: data.streakThreshold,
       },
     });
   },
 
   async update(habitId: number, userId: number, data: Partial<HabitFormData>) {
-    // Перевіряємо що звичка належить цьому користувачу
     const habit = await prisma.habit.findUnique({ where: { id: habitId } });
-    if (!habit || habit.userId !== userId) {
-      throw new Error("NOT_FOUND");
-    }
+    if (!habit || habit.userId !== userId) throw new Error("NOT_FOUND");
 
     return prisma.habit.update({
       where: { id: habitId },
       data: {
-        ...(data.name && { name: data.name }),
+        ...(data.name !== undefined && { name: data.name }),
         ...(data.description !== undefined && {
-          description: data.description,
+          description: data.description || null,
         }),
-        ...(data.frequency && { frequency: data.frequency }),
+        ...(data.frequency !== undefined && { frequency: data.frequency }),
+        // якщо frequency змінюється на non-custom — очищаємо customFrequency
+        ...(data.frequency === "custom"
+          ? { customFrequency: data.customFrequency ?? null }
+          : data.frequency !== undefined
+            ? { customFrequency: null }
+            : {}),
         ...(data.streakThreshold !== undefined && {
           streakThreshold: data.streakThreshold,
         }),
@@ -87,58 +94,42 @@ export const habitService = {
 
   async delete(habitId: number, userId: number) {
     const habit = await prisma.habit.findUnique({ where: { id: habitId } });
-    if (!habit || habit.userId !== userId) {
-      throw new Error("NOT_FOUND");
-    }
-    // onDelete: Cascade у schema видалить всі completions автоматично
+    if (!habit || habit.userId !== userId) throw new Error("NOT_FOUND");
     await prisma.habit.delete({ where: { id: habitId } });
   },
 
+  // dateStr = "YYYY-MM-DD" або undefined (сьогодні)
   async upsertCompletion(
     habitId: number,
     userId: number,
     completionPct: number,
+    dateStr?: string,
   ) {
-    // Спочатку перевіряємо ownership
     const habit = await prisma.habit.findUnique({ where: { id: habitId } });
-    if (!habit || habit.userId !== userId) {
-      throw new Error("NOT_FOUND");
-    }
-
-    if (completionPct < 0 || completionPct > 100) {
+    if (!habit || habit.userId !== userId) throw new Error("NOT_FOUND");
+    if (completionPct < 0 || completionPct > 100)
       throw new Error("INVALID_PCT");
-    }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // ← Ключове виправлення: localDateStr() в LOCAL часі
+    const targetStr = dateStr ?? localDateStr();
+    const dateUTC = strToUTC(targetStr);
 
-    // upsert = insert якщо не існує, update якщо існує
-    // Це безпечніше ніж перевіряти вручну — немає race condition
     const completion = await prisma.completion.upsert({
-      where: {
-        habitId_completionDate: { habitId, completionDate: today },
-      },
+      where: { habitId_completionDate: { habitId, completionDate: dateUTC } },
       update: { completionPct },
-      create: { habitId, completionDate: today, completionPct },
+      create: { habitId, completionDate: dateUTC, completionPct },
     });
 
-    // Після кожної фіксації — перераховуємо серію
     await this.recalculateStreak(habitId);
-
     return completion;
   },
 
   async getCompletions(habitId: number, userId: number, from: Date, to: Date) {
     const habit = await prisma.habit.findUnique({ where: { id: habitId } });
-    if (!habit || habit.userId !== userId) {
-      throw new Error("NOT_FOUND");
-    }
+    if (!habit || habit.userId !== userId) throw new Error("NOT_FOUND");
 
     return prisma.completion.findMany({
-      where: {
-        habitId,
-        completionDate: { gte: from, lte: to },
-      },
+      where: { habitId, completionDate: { gte: from, lte: to } },
       orderBy: { completionDate: "asc" },
     });
   },
@@ -147,7 +138,6 @@ export const habitService = {
     const habit = await prisma.habit.findUnique({ where: { id: habitId } });
     if (!habit) return;
 
-    // Беремо всі completions у зворотньому порядку (найновіші спочатку)
     const completions = await prisma.completion.findMany({
       where: { habitId },
       orderBy: { completionDate: "desc" },
@@ -161,22 +151,56 @@ export const habitService = {
       return;
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // ── Weekly streak ────────────────────────────────────────
+    if (habit.frequency === "weekly") {
+      const weekMap = new Map<string, number>();
+      for (const c of completions) {
+        const wk = isoWeek(c.completionDate);
+        const cur = weekMap.get(wk) ?? 0;
+        weekMap.set(wk, Math.max(cur, c.completionPct));
+      }
 
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+      const thisWeek = isoWeek(new Date());
+      const lastWeek = prevIsoWeek(thisWeek);
+      const sorted = [...weekMap.keys()].sort().reverse();
 
-    // Серія активна тільки якщо є запис за сьогодні або вчора
-    // Якщо останній запис позавчора і раніше — серія вже перервана
-    const lastDate = new Date(completions[0]!.completionDate);
-    lastDate.setHours(0, 0, 0, 0);
+      if (
+        !sorted.length ||
+        (sorted[0] !== thisWeek && sorted[0] !== lastWeek)
+      ) {
+        await prisma.habit.update({
+          where: { id: habitId },
+          data: { currentStreak: 0 },
+        });
+        return;
+      }
 
-    const isActive =
-      lastDate.getTime() === today.getTime() ||
-      lastDate.getTime() === yesterday.getTime();
+      let streak = 0;
+      let expected = sorted[0];
 
-    if (!isActive) {
+      for (const wk of sorted) {
+        if (wk !== expected) break;
+        if ((weekMap.get(wk) ?? 0) < habit.streakThreshold) break;
+        streak++;
+        expected = prevIsoWeek(expected);
+      }
+
+      await prisma.habit.update({
+        where: { id: habitId },
+        data: {
+          currentStreak: streak,
+          maxStreak: Math.max(habit.maxStreak, streak),
+        },
+      });
+      return;
+    }
+
+    // ── Daily streak (і custom) ──────────────────────────────
+    const todayStr = localDateStr();
+    const yesterdayStr = daysAgoStr(1);
+    const lastStr = localDateStr(completions[0]!.completionDate);
+
+    if (lastStr !== todayStr && lastStr !== yesterdayStr) {
       await prisma.habit.update({
         where: { id: habitId },
         data: { currentStreak: 0 },
@@ -184,30 +208,23 @@ export const habitService = {
       return;
     }
 
-    // Рахуємо послідовні дні де pct >= streakThreshold
     let streak = 0;
-    let expectedDate = new Date(lastDate);
+    let expectedStr = lastStr;
 
-    for (const completion of completions) {
-      const completionDate = new Date(completion.completionDate);
-      completionDate.setHours(0, 0, 0, 0);
-
-      // Якщо пропустили день — серія переривається
-      if (completionDate.getTime() !== expectedDate.getTime()) break;
-
-      // Якщо цього дня виконання нижче порогу — теж переривається
-      if (completion.completionPct < habit.streakThreshold) break;
-
+    for (const c of completions) {
+      const cStr = localDateStr(c.completionDate);
+      if (cStr !== expectedStr) break;
+      if (c.completionPct < habit.streakThreshold) break;
       streak++;
-      // Наступна очікувана дата — день раніше
-      expectedDate.setDate(expectedDate.getDate() - 1);
+      const prev = new Date(`${expectedStr}T12:00:00Z`);
+      prev.setUTCDate(prev.getUTCDate() - 1);
+      expectedStr = localDateStr(prev);
     }
 
     await prisma.habit.update({
       where: { id: habitId },
       data: {
         currentStreak: streak,
-        // maxStreak ніколи не зменшується — це рекорд
         maxStreak: Math.max(habit.maxStreak, streak),
       },
     });

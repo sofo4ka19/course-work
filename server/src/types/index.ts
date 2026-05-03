@@ -24,5 +24,6 @@ export interface HabitFormData {
   name: string;
   description: string;
   frequency: "daily" | "weekly" | "custom";
+  customFrequency?: string;
   streakThreshold: number;
 }
