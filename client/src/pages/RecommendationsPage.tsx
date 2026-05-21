@@ -29,6 +29,11 @@ export default function RecommendationsPage() {
     );
   };
 
+  const handleMarkAllRead = async () => {
+    await recommendationsApi.markAllRead();
+    setRecs((prev) => prev.map((r) => ({ ...r, isRead: true })));
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
@@ -67,20 +72,30 @@ export default function RecommendationsPage() {
         </button>
       </div>
 
-      <div className="flex gap-0 border-b border-card-border mb-5">
-        {(["unread", "all"] as const).map((f) => (
+      <div className="flex items-center justify-between border-b border-card-border mb-5">
+        <div className="flex gap-0">
+          {(["unread", "all"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-colors ${
+                filter === f
+                  ? "border-accent-500 text-accent-700"
+                  : "border-transparent text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              {f === "unread" ? `Unread (${unreadCount})` : "All"}
+            </button>
+          ))}
+        </div>
+        {unreadCount > 0 && (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 text-sm font-bold border-b-2 -mb-px transition-colors ${
-              filter === f
-                ? "border-accent-500 text-accent-700"
-                : "border-transparent text-gray-400 hover:text-gray-600"
-            }`}
+            onClick={handleMarkAllRead}
+            className="text-xs text-gray-400 hover:text-accent-600 font-medium underline pb-1"
           >
-            {f === "unread" ? `Unread (${unreadCount})` : "All"}
+            Mark all as read
           </button>
-        ))}
+        )}
       </div>
 
       {isLoading ? (

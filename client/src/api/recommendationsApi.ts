@@ -6,6 +6,8 @@ export const recommendationsApi = {
 
   markRead: (id: number) => apiClient.patch(`/recommendations/${id}/read`),
 
+  markAllRead: () => apiClient.patch("/recommendations/read-all"),
+
   generate: () =>
     apiClient.post<{ data: { generated: number } }>(
       "/recommendations/generate",
