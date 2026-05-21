@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import {
   localDateStr,
   strToUTC,
@@ -237,21 +237,20 @@ async function generateWithGemini(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("NO_GEMINI_KEY");
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const ai = new GoogleGenAI({ apiKey });
 
   const statsContext = stats
     .map((s) => {
       const byDay = DAY_NAMES.map((d, i) =>
-        s.dayOfWeekAvg[i]! >= 0 ? `${d.slice(0, 3)}: ${s.dayOfWeekAvg[i]}%` : null,
+        s.dayOfWeekAvg[i]! >= 0
+          ? `${d.slice(0, 3)}: ${s.dayOfWeekAvg[i]}%`
+          : null,
       )
         .filter(Boolean)
         .join(", ");
-
       const recent = s.recentEntries
         .map((e) => `${e.date}: ${e.pct}%`)
         .join(", ");
-
       return (
         `Habit: "${s.habitName}"\n` +
         `  30-day avg: ${s.avgPct}%  |  threshold: ${s.streakThreshold}%\n` +
@@ -270,31 +269,50 @@ async function generateWithGemini(
 
   const targetCount = Math.min(Math.max(stats.length + 1, 3), 5);
 
-  const prompt = `You are an expert habit coach. A user shared their habit tracking data from the last 30 days. Analyze it and write ${targetCount} specific, personalized recommendations.
+  const prompt = `You are a habit coach. You give honest, direct advice — no hype, no cheerleading. You speak like a knowledgeable friend, not a motivational poster.
+
+Write exactly ${targetCount} recommendations based on the habit data below.
 
 HABIT DATA:
 ${statsContext}${hintsContext}
 
-Requirements:
+Rules:
+- Start the response immediately with "1." — no intro sentence, no header, no outro
+- Use plain text only: no asterisks, no bold, no markdown of any kind
 - Reference exact habit names, percentages, and day names from the data
-- Each tip must suggest ONE concrete action the user can take this week
-- Cover different habits and different angles (timing, streaks, weak days, motivation)
-- Be encouraging but honest about patterns you see
-- 1-2 sentences each, no markdown, no sub-bullets
+- For each struggling habit, give one concrete life-hack from your knowledge of that habit domain:
+  * Water → keep a bottle visible on your desk, add lemon/mint, drink a glass right after waking
+  * Exercise → lay out clothes the night before, start with just 5 minutes, pair with a morning cue
+  * Meditation → attach it to teeth-brushing, use a timer not an app, start at 2 minutes
+  * Reading → keep the book on your pillow, replace one scroll session, commit to 1 page only
+  * Sleep → set a wind-down alarm 30 min before bed, cool the room, no screens after that alarm
+  * Journaling → leave the journal on your keyboard, write 3 bullets max, do it right after coffee
+  (Apply the same specificity to any habit not listed here)
+- Tone: realistic, specific, no vague praise — point out what's actually slipping and why it matters
+- Each item: 1–2 sentences max
 
-Output a numbered list only:
+Output format — exactly this, nothing before or after:
 1. ...
 2. ...`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+  });
 
+  const text = response.text ?? "";
   return text
     .split("\n")
-    .map((l) => l.replace(/^\d+\.\s*/, "").trim())
+    .filter((l) => /^\d+\./.test(l.trim()))   // only numbered lines
+    .map((l) =>
+      l
+        .replace(/^\d+\.\s*/, "")             // strip leading number
+        .replace(/\*\*/g, "")                 // strip bold markdown
+        .replace(/\*/g, "")                   // strip italic markdown
+        .trim(),
+    )
     .filter((l) => l.length > 15);
 }
-
 // ── Головна функція ───────────────────────────────────────────────
 
 export const recommendationService = {

@@ -14,7 +14,7 @@ export default defineConfig({
     // проксує /api запити на бекенд — не треба писати повний URL в axios
     proxy: {
       "/api": {
-        target: "http://localhost:5000",
+        target: "http://localhost:3001",
         changeOrigin: true,
       },
     },
