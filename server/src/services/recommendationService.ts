@@ -339,9 +339,10 @@ export const recommendationService = {
       texts = rules.map(ruleToText).filter(Boolean);
     }
 
-    // Видаляємо старі непрочитані і зберігаємо нові
-    await prisma.recommendation.deleteMany({
+    // Архівуємо старі непрочитані (не видаляємо, щоб зберігалися у "All")
+    await prisma.recommendation.updateMany({
       where: { userId, isRead: false },
+      data: { isRead: true },
     });
 
     for (const text of texts) {
