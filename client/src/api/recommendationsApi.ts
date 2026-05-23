@@ -8,8 +8,16 @@ export const recommendationsApi = {
 
   markAllRead: () => apiClient.patch("/recommendations/read-all"),
 
+  getUnreadCount: () =>
+    apiClient.get<{ data: { count: number } }>("/recommendations/unread-count"),
+
   generate: () =>
     apiClient.post<{ data: { generated: number } }>(
       "/recommendations/generate",
+    ),
+
+  autoGenerate: () =>
+    apiClient.post<{ data: { generated: number } }>(
+      "/recommendations/auto-generate",
     ),
 };

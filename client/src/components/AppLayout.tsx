@@ -1,5 +1,7 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { recommendationsApi } from "@/api/recommendationsApi";
 
 const navItems = [
   { to: "/dashboard", icon: "▦", label: "Dashboard" },
@@ -11,6 +13,19 @@ const navItems = [
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [unreadAdvice, setUnreadAdvice] = useState(0);
+
+  useEffect(() => {
+    recommendationsApi.autoGenerate().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    recommendationsApi
+      .getUnreadCount()
+      .then((r) => setUnreadAdvice(r.data.data.count))
+      .catch(() => {});
+  }, [location.pathname]);
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "U";
 
   return (
@@ -30,38 +45,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 px-2 py-2.5 space-y-0.5">
-          {navItems.map(({ to, icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition-colors ${
-                  isActive ? "bg-accent-500/[0.18]" : "hover:bg-white/[0.04]"
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <span
-                    className={`w-[26px] h-[26px] rounded-md flex items-center justify-center text-xs shrink-0 ${
-                      isActive
-                        ? "bg-gradient-to-br from-accent-500 to-accent-400 text-white"
-                        : "bg-white/[0.05] text-white/50"
-                    }`}
-                  >
-                    {icon}
-                  </span>
-                  <span
-                    className={`text-xs font-semibold ${
-                      isActive ? "text-white" : "text-white/60"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </>
-              )}
-            </NavLink>
-          ))}
+          {navItems.map(({ to, icon, label }) => {
+            const hasBadge = to === "/recommendations" && unreadAdvice > 0;
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg transition-colors ${
+                    isActive ? "bg-accent-500/[0.18]" : "hover:bg-white/[0.04]"
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className="relative shrink-0">
+                      <span
+                        className={`w-[26px] h-[26px] rounded-md flex items-center justify-center text-xs ${
+                          isActive
+                            ? "bg-gradient-to-br from-accent-500 to-accent-400 text-white"
+                            : "bg-white/[0.05] text-white/50"
+                        }`}
+                      >
+                        {icon}
+                      </span>
+                      {hasBadge && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-danger-500" />
+                      )}
+                    </span>
+                    <span
+                      className={`text-xs font-semibold ${
+                        isActive ? "text-white" : "text-white/60"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="px-2 pb-4 pt-2.5 border-t border-white/[0.06]">
@@ -115,20 +138,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Mobile bottom nav ───────────────────────── */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-sidebar border-t border-white/[0.06] flex">
-        {navItems.map(({ to, icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
-                isActive ? "text-accent-400" : "text-white/40"
-              }`
-            }
-          >
-            <span className="text-base leading-none">{icon}</span>
-            <span className="text-[9px] font-semibold">{label}</span>
-          </NavLink>
-        ))}
+        {navItems.map(({ to, icon, label }) => {
+          const hasBadge = to === "/recommendations" && unreadAdvice > 0;
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors ${
+                  isActive ? "text-accent-400" : "text-white/40"
+                }`
+              }
+            >
+              <span className="relative leading-none">
+                <span className="text-base">{icon}</span>
+                {hasBadge && (
+                  <span className="absolute -top-0.5 -right-1.5 w-2 h-2 rounded-full bg-danger-500" />
+                )}
+              </span>
+              <span className="text-[9px] font-semibold">{label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
     </div>
   );

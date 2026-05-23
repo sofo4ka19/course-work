@@ -354,4 +354,13 @@ export const recommendationService = {
 
     return texts.length;
   },
+
+  async generateIfNeeded(userId: number): Promise<number> {
+    const todayStart = strToUTC(localDateStr());
+    const alreadyRan = await prisma.recommendation.findFirst({
+      where: { userId, generatedAt: { gte: todayStart } },
+    });
+    if (alreadyRan) return 0;
+    return this.generate(userId);
+  },
 };
