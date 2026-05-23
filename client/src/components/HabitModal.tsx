@@ -20,7 +20,7 @@ export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
       name: "",
       description: "",
       frequency: "daily",
-      customFrequency: "",
+      customFrequency: "3",
       streakThreshold: 50,
     },
   });
@@ -33,7 +33,7 @@ export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
         name: habit.name,
         description: habit.description ?? "",
         frequency: habit.frequency,
-        customFrequency: habit.customFrequency ?? "",
+        customFrequency: habit.customFrequency ?? "3",
         streakThreshold: habit.streakThreshold,
       });
     } else {
@@ -109,21 +109,31 @@ export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
             <select className={inputCls} {...register("frequency")}>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly (once per week)</option>
-              <option value="custom">Custom schedule</option>
+              <option value="custom">Several times per week</option>
             </select>
           </div>
 
           {freq === "custom" && (
             <div>
-              <label className={labelCls}>Describe your schedule</label>
-              <input
+              <label className={labelCls}>
+                Times per week
+                <span className="normal-case font-normal tracking-normal ml-1 text-gray-400">
+                  — streak counts weeks with this many completions
+                </span>
+              </label>
+              <select
                 className={inputCls}
-                placeholder="e.g. Every Monday and Thursday"
                 {...register("customFrequency", {
                   validate: (v) =>
-                    freq !== "custom" || !!v || "Please describe your schedule",
+                    freq !== "custom" || !!v || "Required",
                 })}
-              />
+              >
+                {[2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={String(n)}>
+                    {n} times per week
+                  </option>
+                ))}
+              </select>
               {errors.customFrequency && (
                 <p className="text-danger-500 text-xs mt-1">
                   {errors.customFrequency.message}

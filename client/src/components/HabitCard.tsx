@@ -28,7 +28,7 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
 
   const freqLabel =
     habit.frequency === "custom" && habit.customFrequency
-      ? habit.customFrequency
+      ? `${habit.customFrequency}× / week`
       : habit.frequency.charAt(0).toUpperCase() + habit.frequency.slice(1);
 
   return (
@@ -108,7 +108,7 @@ export function HabitCard({ habit, onEdit, onDelete, onLog }: HabitCardProps) {
             }`}
           >
             {streakHot ? "🔥 " : ""}
-            {habit.currentStreak}d
+            {habit.currentStreak}{habit.frequency === "daily" ? "d" : "w"}
             {habit.maxStreak > habit.currentStreak && habit.maxStreak > 0
               ? ` / ${habit.maxStreak}`
               : ""}

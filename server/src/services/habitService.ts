@@ -195,7 +195,55 @@ export const habitService = {
       return;
     }
 
-    // ── Daily streak (і custom) ──────────────────────────────
+    // ── Custom: N times per week ─────────────────────────────
+    if (habit.frequency === "custom" && habit.customFrequency) {
+      const timesPerWeek = parseInt(habit.customFrequency, 10);
+
+      if (!isNaN(timesPerWeek) && timesPerWeek >= 2) {
+        // count qualifying completions (>= threshold) per ISO week
+        const weekCountMap = new Map<string, number>();
+        for (const c of completions) {
+          if (c.completionPct >= habit.streakThreshold) {
+            const wk = isoWeek(c.completionDate);
+            weekCountMap.set(wk, (weekCountMap.get(wk) ?? 0) + 1);
+          }
+        }
+
+        const thisWeek = isoWeek(new Date());
+
+        // starting week: this week (if already hit target) or last week
+        const startWeek =
+          (weekCountMap.get(thisWeek) ?? 0) >= timesPerWeek
+            ? thisWeek
+            : prevIsoWeek(thisWeek);
+
+        if ((weekCountMap.get(startWeek) ?? 0) < timesPerWeek) {
+          await prisma.habit.update({
+            where: { id: habitId },
+            data: { currentStreak: 0 },
+          });
+          return;
+        }
+
+        let streak = 0;
+        let expected = startWeek;
+        while ((weekCountMap.get(expected) ?? 0) >= timesPerWeek) {
+          streak++;
+          expected = prevIsoWeek(expected);
+        }
+
+        await prisma.habit.update({
+          where: { id: habitId },
+          data: {
+            currentStreak: streak,
+            maxStreak: Math.max(habit.maxStreak, streak),
+          },
+        });
+        return;
+      }
+    }
+
+    // ── Daily streak ─────────────────────────────────────────
     const todayStr = localDateStr();
     const yesterdayStr = daysAgoStr(1);
     const lastStr = localDateStr(completions[0]!.completionDate);
