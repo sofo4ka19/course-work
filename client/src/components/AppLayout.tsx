@@ -17,7 +17,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [unreadAdvice, setUnreadAdvice] = useState(0);
 
   useEffect(() => {
-    recommendationsApi.autoGenerate().catch(() => {});
+    recommendationsApi
+      .autoGenerate()
+      .then((r) => {
+        if (r.data.data.generated > 0) {
+          window.dispatchEvent(new CustomEvent("recommendations-updated"));
+        }
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {

@@ -22,6 +22,12 @@ export default function RecommendationsPage() {
     fetchRecs();
   }, [fetchRecs]);
 
+  useEffect(() => {
+    const handler = () => fetchRecs();
+    window.addEventListener("recommendations-updated", handler);
+    return () => window.removeEventListener("recommendations-updated", handler);
+  }, [fetchRecs]);
+
   const handleMarkRead = async (id: number) => {
     await recommendationsApi.markRead(id);
     setRecs((prev) =>
