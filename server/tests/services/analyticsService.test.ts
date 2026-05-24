@@ -20,29 +20,36 @@ describe("analyticsService", () => {
       });
     });
 
-    it("computes weekAvgPct and activeStreaks", async () => {
+    it("computes weekAvgPct and activeStreaks (streak ≥ 2 only)", async () => {
       prismaMock.habit.findMany.mockResolvedValue([
         {
           id: 1,
           name: "Run",
-          currentStreak: 3,
+          currentStreak: 3, // counts as active
           completions: [{ completionPct: 80 }, { completionPct: 60 }],
         },
         {
           id: 2,
           name: "Read",
-          currentStreak: 0,
+          currentStreak: 1, // logged today but no real streak — does NOT count
           completions: [{ completionPct: 40 }],
+        },
+        {
+          id: 3,
+          name: "Sleep",
+          currentStreak: 0,
+          completions: [{ completionPct: 30 }],
         },
       ]);
 
       const result = await analyticsService.getDashboardStats(1);
 
-      // habit 1 avg = 70, habit 2 avg = 40, overall = 55
-      expect(result.weekAvgPct).toBe(55);
+      // habit 1 avg = 70, habit 2 = 40, habit 3 = 30; overall = 47
+      expect(result.weekAvgPct).toBe(47);
+      // only habit 1 has streak ≥ 2
       expect(result.activeStreaks).toBe(1);
       expect(result.bestHabit).toEqual({ name: "Run", avgPct: 70 });
-      expect(result.worstHabit).toEqual({ name: "Read", avgPct: 40 });
+      expect(result.worstHabit).toEqual({ name: "Sleep", avgPct: 30 });
     });
 
     it("handles habits with no completions (avg = 0)", async () => {

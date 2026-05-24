@@ -45,6 +45,45 @@ describe("habitService", () => {
       expect(result[0]!.todayPct).toBeNull();
       expect(result[0]!.weekAvgPct).toBeNull();
     });
+
+    it("resets stored streak to 0 when the most recent log is too old", async () => {
+      // DB has a stale streak of 5 from old logs, but last completion is 4 days ago
+      const fourDaysAgo = new Date();
+      fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+      const staleHabit = { ...baseHabit, currentStreak: 5, maxStreak: 5 };
+
+      // initial fetch (stale data)
+      prismaMock.habit.findMany.mockResolvedValueOnce([staleHabit]);
+      // for recalculateStreak: findUnique for the habit
+      prismaMock.habit.findUnique.mockResolvedValue(staleHabit);
+      // recalculateStreak fetches completions — only one, four days ago
+      prismaMock.completion.findMany.mockResolvedValueOnce([
+        { completionDate: fourDaysAgo, completionPct: 80 },
+      ]);
+      // recalculateStreak calls habit.update to zero the streak
+      prismaMock.habit.update.mockResolvedValue({
+        ...staleHabit,
+        currentStreak: 0,
+      });
+      // re-fetch after recalculation
+      prismaMock.habit.findMany.mockResolvedValueOnce([
+        { ...staleHabit, currentStreak: 0 },
+      ]);
+      // findFirst (todayCompletion) + findMany (weekCompletions)
+      prismaMock.completion.findFirst.mockResolvedValue(null);
+      prismaMock.completion.findMany.mockResolvedValueOnce([]);
+
+      const result = await habitService.getAllByUser(1);
+
+      expect(result[0]!.currentStreak).toBe(0);
+      // recalculateStreak must have been invoked
+      expect(prismaMock.habit.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1 },
+          data: expect.objectContaining({ currentStreak: 0 }),
+        }),
+      );
+    });
   });
 
   describe("create", () => {

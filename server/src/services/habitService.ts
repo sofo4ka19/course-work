@@ -11,6 +11,15 @@ import {
 
 export const habitService = {
   async getAllByUser(userId: number) {
+    const initial = await prisma.habit.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    });
+
+    // streaks можуть застаріти, якщо користувач пропустив дні —
+    // recalculateStreak оновить currentStreak до 0 при перерві
+    await Promise.all(initial.map((h) => this.recalculateStreak(h.id)));
+
     const habits = await prisma.habit.findMany({
       where: { userId },
       orderBy: { createdAt: "asc" },

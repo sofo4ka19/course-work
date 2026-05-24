@@ -44,7 +44,9 @@ export const analyticsService = {
     const weekAvgPct = Math.round(
       stats.reduce((s, h) => s + h.avgPct, 0) / stats.length,
     );
-    const activeStreaks = stats.filter((h) => h.currentStreak > 0).length;
+    // "Active streak" = ≥ 2 consecutive periods. A streak of 1 just means
+    // "logged today/this week", not yet a real streak.
+    const activeStreaks = stats.filter((h) => h.currentStreak >= 2).length;
     const sorted = [...stats].sort((a, b) => b.avgPct - a.avgPct);
 
     const bestHabit =
