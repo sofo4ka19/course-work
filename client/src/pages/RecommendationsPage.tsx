@@ -33,11 +33,13 @@ export default function RecommendationsPage() {
     setRecs((prev) =>
       prev.map((r) => (r.id === id ? { ...r, isRead: true } : r)),
     );
+    window.dispatchEvent(new CustomEvent("recommendations-read-changed"));
   };
 
   const handleMarkAllRead = async () => {
     await recommendationsApi.markAllRead();
     setRecs((prev) => prev.map((r) => ({ ...r, isRead: true })));
+    window.dispatchEvent(new CustomEvent("recommendations-read-changed"));
   };
 
   const handleGenerate = async () => {
@@ -47,6 +49,8 @@ export default function RecommendationsPage() {
       await fetchRecs();
       if (res.data.data.generated === 0) {
         alert("No habits found. Add and log some habits first.");
+      } else {
+        window.dispatchEvent(new CustomEvent("recommendations-updated"));
       }
     } catch {
       alert("Failed to generate advice. Please try again.");

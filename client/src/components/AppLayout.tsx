@@ -27,12 +27,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .catch(console.error);
   }, []);
 
-  useEffect(() => {
+  const refreshUnreadCount = () => {
     recommendationsApi
       .getUnreadCount()
       .then((r) => setUnreadAdvice(r.data.data.count))
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshUnreadCount();
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handler = () => refreshUnreadCount();
+    window.addEventListener("recommendations-read-changed", handler);
+    window.addEventListener("recommendations-updated", handler);
+    return () => {
+      window.removeEventListener("recommendations-read-changed", handler);
+      window.removeEventListener("recommendations-updated", handler);
+    };
+  }, []);
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? "U";
 
   return (
