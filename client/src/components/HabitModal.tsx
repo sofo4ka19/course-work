@@ -108,8 +108,8 @@ export function HabitModal({ habit, onSubmit, onClose }: HabitModalProps) {
             <label className={labelCls}>Frequency</label>
             <select className={inputCls} {...register("frequency")}>
               <option value="daily">Daily</option>
-              <option value="weekly">Weekly (once per week)</option>
-              <option value="custom">Several times per week</option>
+              <option value="weekly">Weekly</option>
+              <option value="custom">Custom</option>
             </select>
           </div>
 
