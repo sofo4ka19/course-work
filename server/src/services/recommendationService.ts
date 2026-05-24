@@ -326,7 +326,8 @@ export const recommendationService = {
 
     try {
       texts = await generateWithGemini(stats, rules);
-      // Якщо Gemini повернув менше рядків ніж правил — доповнюємо fallback
+      if (texts.length === 0) throw new Error("EMPTY_PARSE");
+      // доповнюємо до кількості правил, якщо Gemini повернув менше
       while (texts.length < rules.length) {
         const rule = rules[texts.length];
         if (rule) texts.push(ruleToText(rule));
@@ -334,7 +335,7 @@ export const recommendationService = {
     } catch (err) {
       console.warn(
         "[recommendations] Gemini unavailable, using rule-based fallback:",
-        err,
+        err instanceof Error ? err.message : err,
       );
       texts = rules.map(ruleToText).filter(Boolean);
     }
